@@ -230,7 +230,7 @@ export default function UserList({ orgId, currentUserId, initialMembers }: UserL
      {
         field: 'actions',
         type: 'actions',
-        width: 120,
+        width: 150,
         align: 'right',
         getActions: ({ row }) => {
           const isCurrentUser = row.user_id === currentUserId;
