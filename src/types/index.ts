@@ -1,11 +1,16 @@
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
-export type OrgRole =
-  | 'Agency Administrator'
-  | 'Scheduler'
-  | 'Clinical Manager'
-  | 'HR Coordinator'
-  | 'Compliance Administrator'
+// src/types/index.ts
+
+export const ORG_ROLES = [
+  'Agency Administrator',
+  'Scheduler',
+  'Clinical Manager',
+  'HR Coordinator',
+  'Compliance Administrator',
+] as const
+
+export type OrgRole = (typeof ORG_ROLES)[number]
 
 export type PlatformRole = 'Platform Administrator' | 'Technical Support'
 
@@ -765,6 +770,7 @@ export type Database = {
       travel_result_cache:                TableDef<TravelResultCache>
       operational_history_events:         TableDef<OperationalHistoryEvent>
     }
+    Views: Record<string, never>
     Functions: {
       has_org_permission: { Args: { org_id: string; perm_code: string }; Returns: boolean }
       is_org_member:      { Args: { org_id: string };                    Returns: boolean }
