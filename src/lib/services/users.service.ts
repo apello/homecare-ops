@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/db/client'
 import { createAdminClient } from '@/lib/db/admin'
-import { getSession } from '@/lib/auth/server'
+import { requirePermission } from '@/lib/permissions'
 import type { OrgRole, OrganizationMembership, UserProfile } from '@/types'
 
 export type OrgMemberWithProfile = OrganizationMembership & {
@@ -38,6 +38,8 @@ export async function listOrgMembers(orgId: string): Promise<OrgMemberWithProfil
 }
 
 export async function inviteUser(orgId: string, email: string, role: OrgRole): Promise<void> {
+  await requirePermission(orgId, 'users.manage')
+
   const admin = createAdminClient()
 
   const { data: inviteData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email)
@@ -57,22 +59,6 @@ export async function inviteUser(orgId: string, email: string, role: OrgRole): P
 
 export async function updateMemberRole(orgId: string, membershipId: string, role: OrgRole): Promise<void> {
   const supabase = await createClient()
-  const { error } = await supabase
-    .from('organization_memberships')
-    .update({ role })
-    .eq('id', membershipId)
-    .eq('organization_id', orgId)
-
-  if (error) throw new Error(error.message)
-}
-
-export async function suspendMember(orgId: string, membershipId: string): Promise<void> {
-  const user = await getSession()
-  const supabase = await createClient()
-
-  if (!user?.id) {
-    throw new Error('Not authenticated')
-  }
 
   const { data: membership, error: membershipError } = await supabase
     .from('organization_memberships')
@@ -81,33 +67,35 @@ export async function suspendMember(orgId: string, membershipId: string): Promis
     .eq('organization_id', orgId)
     .single<MembershipAccessCheck>()
 
-  if (membershipError) {
-    throw new Error(membershipError.message)
-  }
+  if (membershipError) throw new Error(membershipError.message)
 
-  if (membership.user_id === user.id) {
-    throw new Error('You cannot suspend your own account.')
-  }
+  const { error } = await supabase.rpc('update_org_member_role', {
+    target_org_id: orgId,
+    target_user_id: membership.user_id,
+    new_role: role,
+  })
 
-  if (membership.status !== 'Active') {
-    throw new Error('Only active members can be suspended.')
-  }
+  if (error) throw new Error(error.message)
+}
 
-  const { error } = await supabase
+export async function suspendMember(orgId: string, membershipId: string): Promise<void> {
+  const supabase = await createClient()
+
+  const { data: membership, error: membershipError } = await supabase
     .from('organization_memberships')
-    .update({
-      status: 'Suspended',
-      disabled_at: new Date().toISOString(),
-      disabled_by_user_id: user.id,
-    })
+    .select('id, organization_id, user_id, status')
     .eq('id', membershipId)
     .eq('organization_id', orgId)
-    .eq('status', 'Active')
-    .neq('user_id', user.id)
+    .single<MembershipAccessCheck>()
 
-  if (error) {
-    throw new Error(error.message)
-  }
+  if (membershipError) throw new Error(membershipError.message)
+
+  const { error } = await supabase.rpc('suspend_org_member', {
+    target_org_id: orgId,
+    target_user_id: membership.user_id,
+  })
+
+  if (error) throw new Error(error.message)
 }
 
 export async function unsuspendMember(orgId: string, membershipId: string): Promise<void> {
@@ -120,42 +108,32 @@ export async function unsuspendMember(orgId: string, membershipId: string): Prom
     .eq('organization_id', orgId)
     .single<MembershipAccessCheck>()
 
-  if (membershipError) {
-    throw new Error(membershipError.message)
-  }
+  if (membershipError) throw new Error(membershipError.message)
 
-  if (membership.status !== 'Suspended') {
-    throw new Error('Only suspended members can be unsuspended.')
-  }
+  const { error } = await supabase.rpc('unsuspend_org_member', {
+    target_org_id: orgId,
+    target_user_id: membership.user_id,
+  })
 
-  const { error } = await supabase
-    .from('organization_memberships')
-    .update({
-      status: 'Active',
-      disabled_at: null,
-      disabled_by_user_id: null,
-    })
-    .eq('id', membershipId)
-    .eq('organization_id', orgId)
-    .eq('status', 'Suspended')
-
-  if (error) {
-    throw new Error(error.message)
-  }
+  if (error) throw new Error(error.message)
 }
 
 export async function revokeMember(orgId: string, membershipId: string): Promise<void> {
-  const user = await getSession()
   const supabase = await createClient()
-  const { error } = await supabase
+
+  const { data: membership, error: membershipError } = await supabase
     .from('organization_memberships')
-    .update({
-      status: 'Revoked',
-      disabled_at: new Date().toISOString(),
-      disabled_by_user_id: user?.id ?? null,
-    })
+    .select('id, organization_id, user_id, status')
     .eq('id', membershipId)
     .eq('organization_id', orgId)
+    .single<MembershipAccessCheck>()
+
+  if (membershipError) throw new Error(membershipError.message)
+
+  const { error } = await supabase.rpc('revoke_org_member', {
+    target_org_id: orgId,
+    target_user_id: membership.user_id,
+  })
 
   if (error) throw new Error(error.message)
 }
