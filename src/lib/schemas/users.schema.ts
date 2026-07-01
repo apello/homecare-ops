@@ -11,14 +11,14 @@ const uuidShape = z.string().regex(
 export const InviteUserSchema = z.object({
   organizationId: uuidShape,
   email: z.string().email(),
-  role: orgRoleEnum,
+  roles: z.array(orgRoleEnum).min(1, 'At least one role is required'),
 }).strict()
 
-export const UpdateRoleSchema = z.object({
+export const SetRolesSchema = z.object({
   organizationId: uuidShape,
   membershipId: uuidShape,
-  role: orgRoleEnum,
+  roles: z.array(orgRoleEnum).min(1, 'At least one role is required'),
 }).strict()
 
 export type InviteUserInput = z.infer<typeof InviteUserSchema>
-export type UpdateRoleInput = z.infer<typeof UpdateRoleSchema>
+export type SetRolesInput = z.infer<typeof SetRolesSchema>

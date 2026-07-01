@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { requireAuth } from '@/lib/auth/server'
 import { requirePermission } from '@/lib/permissions'
-import { InviteUserSchema, UpdateRoleSchema } from '@/lib/schemas/users.schema'
+import { InviteUserSchema, SetRolesSchema } from '@/lib/schemas/users.schema'
 import * as usersService from '@/lib/services/users.service'
 import type { ActionResponse } from '@/types'
 import type { OrgMemberWithProfile } from '@/lib/services/users.service'
@@ -27,7 +27,7 @@ export async function listMembersAction(orgId: string): Promise<ActionResponse<O
 //       return { success: false, fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]> }
 //     }
 //     await requirePermission(parsed.data.organizationId, 'users.manage')
-//     await usersService.inviteUser(parsed.data.organizationId, parsed.data.email, parsed.data.role)
+//     await usersService.inviteUser(parsed.data.organizationId, parsed.data.email, parsed.data.roles)
 //     return { success: true }
 //   } catch (err) {
 //     const message = err instanceof Error ? err.message : undefined
@@ -35,16 +35,15 @@ export async function listMembersAction(orgId: string): Promise<ActionResponse<O
 //   }
 // }
 
-export async function updateRoleAction(input: unknown): Promise<ActionResponse> {
+export async function setRolesAction(input: unknown): Promise<ActionResponse> {
   try {
     await requireAuth()
-    const parsed = UpdateRoleSchema.safeParse(input)
+    const parsed = SetRolesSchema.safeParse(input)
     if (!parsed.success) {
-      console.error('[updateRoleAction] validation failed:', parsed.error.flatten())
       return { success: false, fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]> }
     }
     await requirePermission(parsed.data.organizationId, 'users.manage')
-    await usersService.updateMemberRole(parsed.data.organizationId, parsed.data.membershipId, parsed.data.role)
+    await usersService.setMemberRoles(parsed.data.organizationId, parsed.data.membershipId, parsed.data.roles)
     revalidatePath('/settings/users')
     return { success: true }
   } catch (err) {
@@ -68,7 +67,6 @@ export async function unsuspendMemberAction(input: { organizationId: string; mem
     await requireAuth()
     await requirePermission(input.organizationId, 'users.manage')
     await usersService.unsuspendMember(input.organizationId, input.membershipId)
-
     return { success: true }
   } catch {
     return { success: false, error: 'Unable to complete this action.' }

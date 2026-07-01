@@ -8,7 +8,7 @@ import useNotifications from '@/components/templates/crud-dashboard/hooks/useNot
 import PageContainer from '@/components/templates/crud-dashboard/components/PageContainer';
 import type { OrgMemberWithProfile } from '@/lib/services/users.service';
 import type { OrgRole } from '@/types';
-import { updateRoleAction } from '../actions';
+import { setRolesAction } from '../actions';
 import MemberForm, { type MemberFormState } from './MemberForm';
 
 interface MemberEditFormProps {
@@ -21,8 +21,8 @@ function MemberEditForm({ member, orgId }: MemberEditFormProps) {
   const notifications = useNotifications();
 
   const initialRoles = React.useMemo<OrgRole[]>(
-    () => (member.role ? [member.role as OrgRole] : []),
-    [member.role],
+    () => member.roles ?? [],
+    [member.roles],
   );
 
   const [formState, setFormState] = React.useState<MemberFormState>({
@@ -45,12 +45,10 @@ function MemberEditForm({ member, orgId }: MemberEditFormProps) {
         return;
       }
 
-      // TODO: When multi-role support is added to the backend, submit all roles.
-      // For now, only the first selected role is saved.
-      const result = await updateRoleAction({
+      const result = await setRolesAction({
         organizationId: orgId,
         membershipId: member.id,
-        role: values.roles[0],
+        roles: values.roles,
       });
 
       if (!result.success) {

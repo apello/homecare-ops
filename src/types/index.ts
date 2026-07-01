@@ -222,7 +222,7 @@ export type OrganizationMembership = {
   id: string
   organization_id: string
   user_id: string
-  role: OrgRole
+  roles: OrgRole[]
   status: MembershipStatus
   joined_at: string
   disabled_at: string | null
@@ -772,9 +772,13 @@ export type Database = {
     }
     Views: Record<string, never>
     Functions: {
-      has_org_permission: { Args: { org_id: string; perm_code: string }; Returns: boolean }
-      is_org_member:      { Args: { org_id: string };                    Returns: boolean }
-      is_org_admin:       { Args: { org_id: string };                    Returns: boolean }
+      has_org_permission:    { Args: { org_id: string; perm_code: string };                                     Returns: boolean }
+      is_org_member:         { Args: { org_id: string };                                                       Returns: boolean }
+      is_org_admin:          { Args: { org_id: string };                                                       Returns: boolean }
+      can_manage_org_users:  { Args: { target_org_id: string };                                                Returns: boolean }
+      suspend_org_member:    { Args: { target_org_id: string; target_user_id: string };                        Returns: OrganizationMembership }
+      unsuspend_org_member:  { Args: { target_org_id: string; target_user_id: string };                        Returns: OrganizationMembership }
+      set_org_member_roles:  { Args: { target_org_id: string; target_user_id: string; new_roles: OrgRole[] };  Returns: OrganizationMembership }
     }
   }
 }

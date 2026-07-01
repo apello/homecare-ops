@@ -89,8 +89,9 @@ export default function MemberForm({
             value={formState.values.roles}
             onChange={handleRolesChange}
             input={<OutlinedInput label="Roles" />}
+            sx={{ height: 'auto' }}
             renderValue={(selected) => (
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, py: 0.5 }}>
                 {selected.map((role) => (
                   <Chip key={role} label={role} size="small" />
                 ))}
@@ -103,9 +104,7 @@ export default function MemberForm({
               </MenuItem>
             ))}
           </Select>
-          <FormHelperText>
-            {formState.errors.roles ?? 'Multi-role assignment requires a future backend update.'}
-          </FormHelperText>
+          <FormHelperText>{formState.errors.roles}</FormHelperText>
         </FormControl>
 
         <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between' }}>

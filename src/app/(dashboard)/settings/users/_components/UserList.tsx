@@ -202,7 +202,19 @@ export default function UserList({ orgId, currentUserId, initialMembers }: UserL
           return row.user_id === currentUserId ? `${name} (You)` : name;
         },
       },
-      { field: 'role', headerName: 'Role', width: 200 },
+      {
+        field: 'roles',
+        headerName: 'Roles',
+        flex: 1,
+        minWidth: 200,
+        renderCell: (params) => (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, padding: 0.5, alignItems: 'center', height: '100%', overflowY: 'auto' }}>
+            {(params.value as string[])?.map((role: string) => (
+              <Chip key={role} label={role} size="small" />
+            ))}
+          </Box>
+        ),
+      },
       {
         field: 'status',
         headerName: 'Status',

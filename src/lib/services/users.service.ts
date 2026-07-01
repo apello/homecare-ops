@@ -58,7 +58,7 @@ export async function listOrgMembers(orgId: string): Promise<OrgMemberWithProfil
   return data as OrgMemberWithProfile[]
 }
 
-export async function inviteUser(orgId: string, email: string, role: OrgRole): Promise<void> {
+export async function inviteUser(orgId: string, email: string, roles: OrgRole[]): Promise<void> {
   const admin = createAdminClient()
 
   const { data: inviteData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email)
@@ -69,14 +69,14 @@ export async function inviteUser(orgId: string, email: string, role: OrgRole): P
     .insert({
       organization_id: orgId,
       user_id: inviteData.user.id,
-      role,
+      roles,
       status: 'Active',
     })
 
   if (memberError) throw new Error(memberError.message)
 }
 
-export async function updateMemberRole(orgId: string, membershipId: string, role: OrgRole): Promise<void> {
+export async function setMemberRoles(orgId: string, membershipId: string, roles: OrgRole[]): Promise<void> {
   const supabase = await createClient()
 
   const { data: membership, error: membershipError } = await supabase
@@ -87,18 +87,18 @@ export async function updateMemberRole(orgId: string, membershipId: string, role
     .single<MembershipAccessCheck>()
 
   if (membershipError) {
-    console.error('[updateMemberRole] membership lookup failed:', membershipError)
+    console.error('[setMemberRoles] membership lookup failed:', membershipError)
     throw new Error(membershipError.message)
   }
 
-  const { error } = await supabase.rpc('update_org_member_role', {
+  const { error } = await supabase.rpc('set_org_member_roles', {
     target_org_id: orgId,
     target_user_id: membership.user_id,
-    new_role: role,
+    new_roles: roles,
   })
 
   if (error) {
-    console.error('[updateMemberRole] RPC error:', error)
+    console.error('[setMemberRoles] RPC error:', error)
     throw new Error(error.message)
   }
 }
