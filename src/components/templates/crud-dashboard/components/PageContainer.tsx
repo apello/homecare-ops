@@ -4,11 +4,11 @@ import { styled } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import Breadcrumbs, { breadcrumbsClasses } from '@mui/material/Breadcrumbs';
 import Container, { ContainerProps } from '@mui/material/Container';
-import MuiLink from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import NavigateNextRoundedIcon from '@mui/icons-material/NavigateNextRounded';
 import Link from 'next/link';
+import MuiLink from '@mui/material/Link';
 
 const PageContentHeader = styled('div')(({ theme }) => ({
   display: 'flex',
@@ -54,7 +54,33 @@ export default function PageContainer(props: PageContainerProps) {
     <Container sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
       <Stack sx={{ flex: 1, my: 2 }} spacing={2}>
         <Stack>
-          
+           <PageHeaderBreadcrumbs
+            aria-label="breadcrumb"
+            separator={<NavigateNextRoundedIcon fontSize="small" />}
+          >
+            {breadcrumbs
+              ? breadcrumbs.map((breadcrumb, index) => {
+                  return breadcrumb.path ? (
+                    <MuiLink
+                      key={index}
+                      component={Link}
+                      underline="hover"
+                      color="inherit"
+                      href={breadcrumb.path}
+                    >
+                      {breadcrumb.title}
+                    </MuiLink>
+                  ) : (
+                    <Typography
+                      key={index}
+                      sx={{ color: 'text.primary', fontWeight: 600 }}
+                    >
+                      {breadcrumb.title}
+                    </Typography>
+                  );
+                })
+              : null}
+          </PageHeaderBreadcrumbs>
           <PageContentHeader>
             {title ? <Typography variant="h4">{title}</Typography> : null}
             <PageHeaderToolbar>{actions}</PageHeaderToolbar>

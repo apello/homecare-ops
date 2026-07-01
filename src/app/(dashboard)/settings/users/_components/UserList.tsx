@@ -9,6 +9,7 @@ import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
+import CircularProgress from '@mui/material/CircularProgress';
 import {
   DataGrid,
   GridActionsCellItem,
@@ -301,8 +302,8 @@ export default function UserList({ orgId, currentUserId, initialMembers }: UserL
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
           <Tooltip title="Reload data" placement="right" enterDelay={1000}>
             <div>
-              <IconButton size="small" aria-label="refresh" onClick={handleRefresh}>
-                <RefreshIcon />
+              <IconButton size="small" aria-label="refresh" onClick={handleRefresh} disabled={isLoading}>
+                {isLoading ? <CircularProgress size={18} color="inherit" /> : <RefreshIcon />}
               </IconButton>
             </div>
           </Tooltip>
@@ -320,12 +321,13 @@ export default function UserList({ orgId, currentUserId, initialMembers }: UserL
             rows={members}
             getRowId={(row) => row.id}
             columns={columns}
-            loading={isLoading}
             disableRowSelectionOnClick
             showToolbar
             initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
             pageSizeOptions={[5, 10, 25]}
             sx={{
+              opacity: isLoading ? 0.5 : 1,
+              transition: 'opacity 0.2s',
               [`& .${gridClasses.columnHeader}, & .${gridClasses.cell}`]: { outline: 'transparent' },
               [`& .${gridClasses.columnHeader}:focus-within, & .${gridClasses.cell}:focus-within`]: {
                 outline: 'none',
