@@ -2,15 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@/lib/db/client', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/db/admin', () => ({ createAdminClient: vi.fn() }))
-vi.mock('@/lib/permissions', () => ({ requirePermission: vi.fn() }))
 
 import { createClient } from '@/lib/db/client'
 import { createAdminClient } from '@/lib/db/admin'
-import { requirePermission } from '@/lib/permissions'
 import {
   listOrgMembers,
   inviteUser,
-  updateMemberRole,
+  setMemberRoles,
   suspendMember,
   unsuspendMember,
   revokeMember,
@@ -18,7 +16,6 @@ import {
 
 const mockClient = createClient as ReturnType<typeof vi.fn>
 const mockAdmin = createAdminClient as ReturnType<typeof vi.fn>
-const mockRequirePermission = requirePermission as ReturnType<typeof vi.fn>
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -81,12 +78,9 @@ describe('listOrgMembers', () => {
 // ─── inviteUser ───────────────────────────────────────────────────────────────
 
 describe('inviteUser', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockRequirePermission.mockResolvedValue(undefined)
-  })
+  beforeEach(() => vi.clearAllMocks())
 
-  it('checks users.manage permission before inviting', async () => {
+  it('invites user and creates membership with roles array', async () => {
     const admin = makeAdminClient()
     admin.auth.admin.inviteUserByEmail.mockResolvedValue({
       data: { user: { id: OTHER_USER_ID } },
@@ -94,28 +88,26 @@ describe('inviteUser', () => {
     })
     admin.insert.mockResolvedValue({ error: null })
 
-    await inviteUser(ORG_ID, 'new@example.com', 'Scheduler')
-
-    expect(mockRequirePermission).toHaveBeenCalledWith(ORG_ID, 'users.manage')
-  })
-
-  it('invites user and creates membership', async () => {
-    const admin = makeAdminClient()
-    admin.auth.admin.inviteUserByEmail.mockResolvedValue({
-      data: { user: { id: OTHER_USER_ID } },
-      error: null,
-    })
-    admin.insert.mockResolvedValue({ error: null })
-
-    await expect(inviteUser(ORG_ID, 'new@example.com', 'Scheduler')).resolves.toBeUndefined()
+    await expect(inviteUser(ORG_ID, 'new@example.com', ['Scheduler'])).resolves.toBeUndefined()
     expect(admin.auth.admin.inviteUserByEmail).toHaveBeenCalledWith('new@example.com')
   })
 
-  it('throws when caller lacks users.manage permission', async () => {
-    mockRequirePermission.mockRejectedValue(new Error('Not authorized.'))
+  it('inserts membership with provided roles', async () => {
+    const admin = makeAdminClient()
+    admin.auth.admin.inviteUserByEmail.mockResolvedValue({
+      data: { user: { id: OTHER_USER_ID } },
+      error: null,
+    })
+    admin.insert.mockResolvedValue({ error: null })
 
-    await expect(inviteUser(ORG_ID, 'new@example.com', 'Scheduler')).rejects.toThrow('Not authorized.')
-    expect(mockAdmin).not.toHaveBeenCalled()
+    await inviteUser(ORG_ID, 'new@example.com', ['Scheduler', 'HR Coordinator'])
+
+    expect(admin.from).toHaveBeenCalledWith('organization_memberships')
+    expect(admin.insert).toHaveBeenCalledWith(expect.objectContaining({
+      roles: ['Scheduler', 'HR Coordinator'],
+      organization_id: ORG_ID,
+      user_id: OTHER_USER_ID,
+    }))
   })
 
   it('throws when auth invite fails', async () => {
@@ -125,7 +117,7 @@ describe('inviteUser', () => {
       error: { message: 'invite failed' },
     })
 
-    await expect(inviteUser(ORG_ID, 'new@example.com', 'Scheduler')).rejects.toThrow('invite failed')
+    await expect(inviteUser(ORG_ID, 'new@example.com', ['Scheduler'])).rejects.toThrow('invite failed')
   })
 
   it('throws when membership insert fails', async () => {
@@ -136,27 +128,27 @@ describe('inviteUser', () => {
     })
     admin.insert.mockResolvedValue({ error: { message: 'insert failed' } })
 
-    await expect(inviteUser(ORG_ID, 'new@example.com', 'Scheduler')).rejects.toThrow('insert failed')
+    await expect(inviteUser(ORG_ID, 'new@example.com', ['Scheduler'])).rejects.toThrow('insert failed')
   })
 })
 
-// ─── updateMemberRole ─────────────────────────────────────────────────────────
+// ─── setMemberRoles ───────────────────────────────────────────────────────────
 
-describe('updateMemberRole', () => {
+describe('setMemberRoles', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('calls update_org_member_role RPC with resolved user_id', async () => {
+  it('calls set_org_member_roles RPC with resolved user_id and roles array', async () => {
     const membership = { id: MEMBERSHIP_ID, organization_id: ORG_ID, user_id: OTHER_USER_ID, status: 'Active' }
     const supabase = makeSupabase()
     supabase.single.mockResolvedValue({ data: membership, error: null })
     supabase.rpc.mockResolvedValue({ error: null })
 
-    await updateMemberRole(ORG_ID, MEMBERSHIP_ID, 'Scheduler')
+    await setMemberRoles(ORG_ID, MEMBERSHIP_ID, ['Scheduler', 'HR Coordinator'])
 
-    expect(supabase.rpc).toHaveBeenCalledWith('update_org_member_role', {
+    expect(supabase.rpc).toHaveBeenCalledWith('set_org_member_roles', {
       target_org_id: ORG_ID,
       target_user_id: OTHER_USER_ID,
-      new_role: 'Scheduler',
+      new_roles: ['Scheduler', 'HR Coordinator'],
     })
   })
 
@@ -164,7 +156,7 @@ describe('updateMemberRole', () => {
     const supabase = makeSupabase()
     supabase.single.mockResolvedValue({ data: null, error: { message: 'not found' } })
 
-    await expect(updateMemberRole(ORG_ID, MEMBERSHIP_ID, 'Scheduler')).rejects.toThrow('not found')
+    await expect(setMemberRoles(ORG_ID, MEMBERSHIP_ID, ['Scheduler'])).rejects.toThrow('not found')
     expect(supabase.rpc).not.toHaveBeenCalled()
   })
 
@@ -174,7 +166,7 @@ describe('updateMemberRole', () => {
     supabase.single.mockResolvedValue({ data: membership, error: null })
     supabase.rpc.mockResolvedValue({ error: { message: 'Not authorized to manage users for this organization' } })
 
-    await expect(updateMemberRole(ORG_ID, MEMBERSHIP_ID, 'Scheduler')).rejects.toThrow('Not authorized')
+    await expect(setMemberRoles(ORG_ID, MEMBERSHIP_ID, ['Scheduler'])).rejects.toThrow('Not authorized')
   })
 })
 
