@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/db/client'
 import { createAdminClient } from '@/lib/db/admin'
-import { requirePermission } from '@/lib/permissions'
 import type { OrgRole, OrganizationMembership, UserProfile } from '@/types'
 
 export type OrgMemberWithProfile = OrganizationMembership & {
@@ -11,6 +10,28 @@ type MembershipAccessCheck = Pick<
   OrganizationMembership,
   'id' | 'organization_id' | 'user_id' | 'status'
 >
+
+export async function getMember(orgId: string, membershipId: string): Promise<OrgMemberWithProfile | null> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('organization_memberships')
+    .select(`
+      *,
+      profile:user_profiles!organization_memberships_user_id_fkey(
+        id,
+        first_name,
+        last_name,
+        access_status
+      )
+    `)
+    .eq('id', membershipId)
+    .eq('organization_id', orgId)
+    .single()
+
+  if (error) return null
+  return data as OrgMemberWithProfile
+}
 
 export async function listOrgMembers(orgId: string): Promise<OrgMemberWithProfile[]> {
   const supabase = await createClient()
@@ -38,8 +59,6 @@ export async function listOrgMembers(orgId: string): Promise<OrgMemberWithProfil
 }
 
 export async function inviteUser(orgId: string, email: string, role: OrgRole): Promise<void> {
-  await requirePermission(orgId, 'users.manage')
-
   const admin = createAdminClient()
 
   const { data: inviteData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email)
@@ -67,7 +86,10 @@ export async function updateMemberRole(orgId: string, membershipId: string, role
     .eq('organization_id', orgId)
     .single<MembershipAccessCheck>()
 
-  if (membershipError) throw new Error(membershipError.message)
+  if (membershipError) {
+    console.error('[updateMemberRole] membership lookup failed:', membershipError)
+    throw new Error(membershipError.message)
+  }
 
   const { error } = await supabase.rpc('update_org_member_role', {
     target_org_id: orgId,
@@ -75,7 +97,10 @@ export async function updateMemberRole(orgId: string, membershipId: string, role
     new_role: role,
   })
 
-  if (error) throw new Error(error.message)
+  if (error) {
+    console.error('[updateMemberRole] RPC error:', error)
+    throw new Error(error.message)
+  }
 }
 
 export async function suspendMember(orgId: string, membershipId: string): Promise<void> {

@@ -21,10 +21,11 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import EditIcon from '@mui/icons-material/Edit';
 import BlockIcon from '@mui/icons-material/Block';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { useRouter } from 'next/navigation';
 import { useDialogs } from '@/components/templates/crud-dashboard/hooks/useDialogs/useDialogs';
 import useNotifications from '@/components/templates/crud-dashboard/hooks/useNotifications/useNotifications';
 import PageContainer from '@/components/templates/crud-dashboard/components/PageContainer';
-import type { OrgMemberWithProfile } from '@/lib/services/users.service'; // adjust if this lives elsewhere
+import type { OrgMemberWithProfile } from '@/lib/services/users.service';
 import { listMembersAction, suspendMemberAction, unsuspendMemberAction, revokeMemberAction } from '../actions';
 
 const STATUS_COLOR: Record<string, 'success' | 'warning' | 'default'> = {
@@ -40,6 +41,7 @@ export interface UserListProps {
 }
 
 export default function UserList({ orgId, currentUserId, initialMembers }: UserListProps) {
+  const router = useRouter();
   const dialogs = useDialogs();
   const notifications = useNotifications();
 
@@ -70,22 +72,14 @@ export default function UserList({ orgId, currentUserId, initialMembers }: UserL
     if (!isLoading) loadData();
   }, [isLoading, loadData]);
 
-  // const handleCreateClick = React.useCallback(async () => {
-  //   const created = await dialogs.open(InviteUserDialog, { orgId });
-  //   if (created) loadData();
-  // }, [dialogs, orgId, loadData]);
-
-  // const handleRowEdit = React.useCallback(
-  //   (member: OrgMemberWithProfile) => async () => {
-  //     const updated = await dialogs.open(EditMemberDialog, { orgId, member });
-  //     if (updated) loadData();
-  //   },
-  //   [dialogs, orgId, loadData],
-  // );
-
   const handleCreateClick = () => alert("Not implemented yet");
 
-  const handleRowEdit = () => alert("Not implemented yet");
+  const handleRowEdit = React.useCallback(
+    (member: OrgMemberWithProfile) => () => {
+      router.push(`/settings/users/${member.id}/edit`);
+    },
+    [router],
+  );
 
   const handleRowSuspend = React.useCallback(
     (member: OrgMemberWithProfile) => async () => {
@@ -195,7 +189,7 @@ export default function UserList({ orgId, currentUserId, initialMembers }: UserL
     },
     [dialogs, notifications, orgId, loadData],
   );
-  // TODO: Add a tool tip explaining actions or disabled icons
+
   const columns = React.useMemo<GridColDef<OrgMemberWithProfile>[]>(
     () => [
       {
@@ -203,8 +197,10 @@ export default function UserList({ orgId, currentUserId, initialMembers }: UserL
         headerName: 'Name',
         flex: 1,
         minWidth: 160,
-        valueGetter: (_value, row) =>
-          `${row.profile?.first_name ?? ''} ${row.profile?.last_name ?? ''}`.trim() || '—',
+        valueGetter: (_value, row) => {
+          const name = `${row.profile?.first_name ?? ''} ${row.profile?.last_name ?? ''}`.trim() || '—';
+          return row.user_id === currentUserId ? `${name} (You)` : name;
+        },
       },
       { field: 'role', headerName: 'Role', width: 200 },
       {
@@ -227,7 +223,7 @@ export default function UserList({ orgId, currentUserId, initialMembers }: UserL
         type: 'date',
         valueGetter: (_value, row) => (row.joined_at ? new Date(row.joined_at) : null),
       },
-     {
+      {
         field: 'actions',
         type: 'actions',
         width: 150,
@@ -239,8 +235,10 @@ export default function UserList({ orgId, currentUserId, initialMembers }: UserL
             <GridActionsCellItem
               key="edit"
               icon={<EditIcon />}
-              label="Edit"
-              onClick={handleRowEdit}
+              label={isCurrentUser ? 'You cannot edit yourself' : 'Edit'}
+              onClick={handleRowEdit(row)}
+              disabled={isCurrentUser}
+
             />,
           ];
 
@@ -280,7 +278,7 @@ export default function UserList({ orgId, currentUserId, initialMembers }: UserL
         },
       }
     ],
-    [currentUserId, handleRowRevoke, handleRowUnsuspend, handleRowSuspend],
+    [currentUserId, handleRowEdit, handleRowRevoke, handleRowUnsuspend, handleRowSuspend],
   );
 
   return (
