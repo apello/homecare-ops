@@ -211,6 +211,10 @@ export type UserProfile = {
   disabled_by_user_id: string | null
 }
 
+export type OrgMemberWithProfile = OrganizationMembership & {
+  profile: Pick<UserProfile, 'id' | 'first_name' | 'last_name' | 'access_status'> | null
+}
+
 export type PlatformUserRole = {
   user_id: string
   role: PlatformRole
@@ -248,6 +252,28 @@ export type MembershipPermissionGrant = {
   granted_at: string
   expires_at: string | null
   revoked_at: string | null
+}
+
+export type PendingInvite = {
+  invite_id: string
+  user_id: string
+  email: string
+  roles: OrgRole[]
+  invited_at: string
+  expires_at: string | null
+}
+
+export type OrgInvite = {
+  id: string
+  organization_id: string
+  invited_user_id: string
+  email: string
+  roles: OrgRole[]
+  status: 'Pending' | 'Accepted' | 'Cancelled'
+  invited_by_user_id: string
+  invited_at: string
+  accepted_at: string | null
+  expires_at: string | null
 }
 
 // ─── Platform-global reference data ──────────────────────────────────────────
@@ -738,6 +764,7 @@ export type Database = {
       user_profiles:                      TableDef<UserProfile>
       platform_user_roles:                TableDef<PlatformUserRole>
       organization_memberships:           TableDef<OrganizationMembership>
+      org_invites:                        TableDef<OrgInvite>
       role_permission_defaults:           TableDef<RolePermissionDefault>
       membership_permission_grants:       TableDef<MembershipPermissionGrant>
       billing_services:                   TableDef<BillingService>
@@ -776,6 +803,11 @@ export type Database = {
       is_org_member:         { Args: { org_id: string };                                                       Returns: boolean }
       is_org_admin:          { Args: { org_id: string };                                                       Returns: boolean }
       can_manage_org_users:  { Args: { target_org_id: string };                                                Returns: boolean }
+      create_org_invite:          { Args: { target_org_id: string; target_user_id: string; target_email: string; initial_roles: OrgRole[]; invite_expires_at?: string }; Returns: OrgInvite }
+      complete_org_invite:        { Args: { target_org_id: string };                                           Returns: OrganizationMembership }
+      create_org_member:          { Args: { target_org_id: string; target_user_id: string; initial_roles: OrgRole[] }; Returns: OrganizationMembership }
+      list_pending_org_invites:   { Args: { target_org_id: string }; Returns: PendingInvite[] }
+      delete_org_invite:          { Args: { target_org_id: string; target_user_id: string }; Returns: void }
       suspend_org_member:    { Args: { target_org_id: string; target_user_id: string };                        Returns: OrganizationMembership }
       unsuspend_org_member:  { Args: { target_org_id: string; target_user_id: string };                        Returns: OrganizationMembership }
       set_org_member_roles:  { Args: { target_org_id: string; target_user_id: string; new_roles: OrgRole[] };  Returns: OrganizationMembership }

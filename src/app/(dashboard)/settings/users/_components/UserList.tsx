@@ -26,7 +26,7 @@ import { useRouter } from 'next/navigation';
 import { useDialogs } from '@/components/templates/crud-dashboard/hooks/useDialogs/useDialogs';
 import useNotifications from '@/components/templates/crud-dashboard/hooks/useNotifications/useNotifications';
 import PageContainer from '@/components/templates/crud-dashboard/components/PageContainer';
-import type { OrgMemberWithProfile } from '@/lib/services/users.service';
+import type { OrgMemberWithProfile } from '@/types';
 import { listMembersAction, suspendMemberAction, unsuspendMemberAction, revokeMemberAction } from '../actions';
 
 const STATUS_COLOR: Record<string, 'success' | 'warning' | 'default'> = {
@@ -73,7 +73,7 @@ export default function UserList({ orgId, currentUserId, initialMembers }: UserL
     if (!isLoading) loadData();
   }, [isLoading, loadData]);
 
-  const handleCreateClick = () => alert("Not implemented yet");
+  const handleCreateClick = () => router.push('/settings/users/invite');
 
   const handleRowEdit = React.useCallback(
     (member: OrgMemberWithProfile) => () => {

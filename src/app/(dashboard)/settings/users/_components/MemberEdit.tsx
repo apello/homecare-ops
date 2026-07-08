@@ -1,15 +1,14 @@
 'use client';
 
 import * as React from 'react';
-import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import { useRouter } from 'next/navigation';
 import useNotifications from '@/components/templates/crud-dashboard/hooks/useNotifications/useNotifications';
 import PageContainer from '@/components/templates/crud-dashboard/components/PageContainer';
-import type { OrgMemberWithProfile } from '@/lib/services/users.service';
-import type { OrgRole } from '@/types';
+import type { OrgMemberWithProfile, OrgRole } from '@/types';
 import { setRolesAction } from '../actions';
 import MemberForm, { type MemberFormState } from './MemberForm';
+import Typography from '@mui/material/Typography';
 
 interface MemberEditFormProps {
   member: OrgMemberWithProfile;
@@ -69,12 +68,9 @@ function MemberEditForm({ member, orgId }: MemberEditFormProps) {
     [orgId, member.id, notifications, router],
   );
 
-  const memberName =
-    `${member.profile?.first_name ?? ''} ${member.profile?.last_name ?? ''}`.trim() || member.id;
-
   return (
     <MemberForm
-      memberName={memberName}
+      member={member}
       formState={formState}
       onRolesChange={handleRolesChange}
       onSubmit={handleSubmit}
@@ -86,10 +82,9 @@ function MemberEditForm({ member, orgId }: MemberEditFormProps) {
 export interface MemberEditProps {
   member: OrgMemberWithProfile | null;
   orgId: string;
-  membershipId: string;
 }
 
-export default function MemberEdit({ member, orgId, membershipId }: MemberEditProps) {
+export default function MemberEdit({ member, orgId }: MemberEditProps) {
   return (
     <PageContainer
       title="Edit Member"
@@ -99,9 +94,9 @@ export default function MemberEdit({ member, orgId, membershipId }: MemberEditPr
         { title: 'Edit' },
       ]}
     >
-      <Box sx={{ display: 'flex', flex: 1 }}>
+      <Box sx={{ display: 'flex', width: '100%', flex: 1 }}>
         {!member ? (
-          <Alert severity="error">Member not found.</Alert>
+          <Typography>Member not found.</Typography>
         ) : (
           <MemberEditForm member={member} orgId={orgId} />
         )}

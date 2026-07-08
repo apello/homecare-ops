@@ -14,7 +14,29 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useRouter } from 'next/navigation';
-import { ORG_ROLES, type OrgRole } from '@/types';
+import { ORG_ROLES, type OrgRole, type OrgMemberWithProfile } from '@/types';
+
+const ROLE_DESCRIPTIONS: Record<OrgRole, string> = {
+  'Agency Administrator':
+    'Manages agency users, roles, patient records, authorizations, organization services, approved service rates, and financial overrides. May view caregiver pay rates and payer reimbursement rates.',
+  'Scheduler':
+    'Creates shifts, runs matching, reviews operational eligibility and rate compatibility, records call-offs, manages replacement outreach, and confirms standard assignments. Cannot manage users or approve financial or clinical overrides.',
+  'Clinical Manager':
+    'Reviews clinical requirements, restrictions, caregiver credentials, skills, and cases requiring clinical approval. Does not receive compensation access unless separately granted.',
+  'HR Coordinator':
+    'Creates and maintains caregiver employment records, credentials, background-check status, availability, service eligibility, and caregiver compensation rates. Receives only the patient information necessary for workforce eligibility tasks.',
+  'Compliance Administrator':
+    'Reviews audit events, disclosures, exports, overrides, call-offs, uncovered shifts, quality events, corrective actions, and privacy requests. Primarily read-only for operational records. Not for MVP, but for future use with privacy management in mind.',
+};
+
+const formatDate = (dateString: string | null) => {
+  if (!dateString) return '—';
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+};
 
 export interface MemberFormState {
   values: { roles: OrgRole[] };
@@ -22,7 +44,7 @@ export interface MemberFormState {
 }
 
 export interface MemberFormProps {
-  memberName: string;
+  member: OrgMemberWithProfile;
   formState: MemberFormState;
   onRolesChange: (roles: OrgRole[]) => void;
   onSubmit: (values: MemberFormState['values']) => Promise<void>;
@@ -31,7 +53,7 @@ export interface MemberFormProps {
 }
 
 export default function MemberForm({
-  memberName,
+  member,
   formState,
   onRolesChange,
   onSubmit,
@@ -40,6 +62,9 @@ export default function MemberForm({
 }: MemberFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  const memberName =
+    `${member.profile?.first_name ?? ''} ${member.profile?.last_name ?? ''}`.trim();
 
   const handleSubmit = React.useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
@@ -69,16 +94,72 @@ export default function MemberForm({
       noValidate
       autoComplete="off"
       onReset={onReset}
-      sx={{ width: '100%', maxWidth: 480 }}
+      sx={{ width: '100%'}}
     >
       <Stack spacing={3}>
-        <Box>
-          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-            Member
+        <Typography variant="subtitle2" fontWeight={600} color="info.dark">
+            Member Information
           </Typography>
-          <Typography variant="body1" fontWeight={500}>
-            {memberName}
-          </Typography>
+        <Box
+          sx={{
+            p: 2,
+            borderRadius: 1,
+            bgcolor: 'info.lighter',
+            border: '1px solid',
+            borderColor: 'info.light',
+          }}
+        >
+          
+          <Stack spacing={1.5}>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 2,
+              }}
+            >
+              <Box>
+                <Typography variant="caption" color="text.secondary" display="block" fontWeight={500}>
+                  Member
+                </Typography>
+                <Typography variant="body2">{memberName}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary" display="block" fontWeight={500}>
+                  Membership Status
+                </Typography>
+                <Typography variant="body2">{member.status}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary" display="block" fontWeight={500}>
+                  Access Status
+                </Typography>
+                <Typography variant="body2">{member.profile?.access_status ?? '—'}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" color="text.secondary" display="block" fontWeight={500}>
+                  Joined
+                </Typography>
+                <Typography variant="body2">{formatDate(member.joined_at)}</Typography>
+              </Box>
+              {member.last_access_review_at && (
+                <Box>
+                  <Typography variant="caption" color="text.secondary" display="block" fontWeight={500}>
+                    Last Access Review
+                  </Typography>
+                  <Typography variant="body2">{formatDate(member.last_access_review_at)}</Typography>
+                </Box>
+              )}
+              {member.disabled_at && (
+                <Box>
+                  <Typography variant="caption" color="text.secondary" display="block" fontWeight={500}>
+                    Disabled
+                  </Typography>
+                  <Typography variant="body2">{formatDate(member.disabled_at)}</Typography>
+                </Box>
+              )}
+            </Box>
+          </Stack>
         </Box>
 
         <FormControl error={!!formState.errors.roles} fullWidth>
@@ -107,6 +188,29 @@ export default function MemberForm({
           <FormHelperText>{formState.errors.roles}</FormHelperText>
         </FormControl>
 
+        <Box
+          sx={{
+            p: 2,
+            borderRadius: 1,
+            bgcolor: 'action.hover',
+            border: '1px solid',
+            borderColor: 'divider',
+          }}
+        >
+          <Stack spacing={1.5}>
+            {ORG_ROLES.map((role) => (
+              <Box key={role}>
+                <Typography variant="body2" fontWeight={600} gutterBottom>
+                  {role}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {ROLE_DESCRIPTIONS[role]}
+                </Typography>
+              </Box>
+            ))}
+          </Stack>
+        </Box>
+
         <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between' }}>
           <Button
             variant="outlined"
@@ -125,6 +229,11 @@ export default function MemberForm({
               size="large"
               loading={isSubmitting}
               disabled={formState.values.roles.length === 0}
+              sx={{
+                '&.Mui-disabled': {
+                  color: 'action.disabled',
+                },
+              }}
             >
               {submitButtonLabel}
             </Button>
