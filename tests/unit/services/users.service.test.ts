@@ -8,6 +8,9 @@ import { createAdminClient } from '@/lib/db/admin'
 import {
   listOrgMembers,
   inviteUser,
+  listPendingInvites,
+  deleteInvite,
+  resendInvite,
   setMemberRoles,
   suspendMember,
   unsuspendMember,
@@ -23,10 +26,7 @@ function makeSupabase(overrides: Record<string, unknown> = {}) {
   const base = {
     from: vi.fn().mockReturnThis(),
     select: vi.fn().mockReturnThis(),
-    insert: vi.fn().mockReturnThis(),
-    update: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
-    neq: vi.fn().mockReturnThis(),
     order: vi.fn().mockReturnThis(),
     single: vi.fn(),
     rpc: vi.fn(),
@@ -38,9 +38,7 @@ function makeSupabase(overrides: Record<string, unknown> = {}) {
 
 function makeAdminClient(overrides: Record<string, unknown> = {}) {
   const base = {
-    auth: { admin: { inviteUserByEmail: vi.fn() } },
-    from: vi.fn().mockReturnThis(),
-    insert: vi.fn(),
+    auth: { admin: { inviteUserByEmail: vi.fn(), deleteUser: vi.fn() } },
     ...overrides,
   }
   mockAdmin.mockReturnValue(base)
@@ -80,33 +78,43 @@ describe('listOrgMembers', () => {
 describe('inviteUser', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('invites user and creates membership with roles array', async () => {
+  it('invites user via auth and creates org invite record with RPC', async () => {
     const admin = makeAdminClient()
+    const supabase = makeSupabase()
+
     admin.auth.admin.inviteUserByEmail.mockResolvedValue({
       data: { user: { id: OTHER_USER_ID } },
       error: null,
     })
-    admin.insert.mockResolvedValue({ error: null })
+    supabase.rpc.mockResolvedValue({ error: null })
 
     await expect(inviteUser(ORG_ID, 'new@example.com', ['Scheduler'])).resolves.toBeUndefined()
-    expect(admin.auth.admin.inviteUserByEmail).toHaveBeenCalledWith('new@example.com')
+
+    expect(admin.auth.admin.inviteUserByEmail).toHaveBeenCalledWith('new@example.com', {
+      data: { pending_org_id: ORG_ID },
+    })
+    expect(supabase.rpc).toHaveBeenCalledWith('create_org_invite', {
+      target_org_id: ORG_ID,
+      target_user_id: OTHER_USER_ID,
+      target_email: 'new@example.com',
+      initial_roles: ['Scheduler'],
+    })
   })
 
-  it('inserts membership with provided roles', async () => {
+  it('passes multiple roles to create_org_invite RPC', async () => {
     const admin = makeAdminClient()
+    const supabase = makeSupabase()
+
     admin.auth.admin.inviteUserByEmail.mockResolvedValue({
       data: { user: { id: OTHER_USER_ID } },
       error: null,
     })
-    admin.insert.mockResolvedValue({ error: null })
+    supabase.rpc.mockResolvedValue({ error: null })
 
     await inviteUser(ORG_ID, 'new@example.com', ['Scheduler', 'HR Coordinator'])
 
-    expect(admin.from).toHaveBeenCalledWith('organization_memberships')
-    expect(admin.insert).toHaveBeenCalledWith(expect.objectContaining({
-      roles: ['Scheduler', 'HR Coordinator'],
-      organization_id: ORG_ID,
-      user_id: OTHER_USER_ID,
+    expect(supabase.rpc).toHaveBeenCalledWith('create_org_invite', expect.objectContaining({
+      initial_roles: ['Scheduler', 'HR Coordinator'],
     }))
   })
 
@@ -120,15 +128,17 @@ describe('inviteUser', () => {
     await expect(inviteUser(ORG_ID, 'new@example.com', ['Scheduler'])).rejects.toThrow('invite failed')
   })
 
-  it('throws when membership insert fails', async () => {
+  it('throws when create_org_invite RPC fails', async () => {
     const admin = makeAdminClient()
+    const supabase = makeSupabase()
+
     admin.auth.admin.inviteUserByEmail.mockResolvedValue({
       data: { user: { id: OTHER_USER_ID } },
       error: null,
     })
-    admin.insert.mockResolvedValue({ error: { message: 'insert failed' } })
+    supabase.rpc.mockResolvedValue({ error: { message: 'RPC failed' } })
 
-    await expect(inviteUser(ORG_ID, 'new@example.com', ['Scheduler'])).rejects.toThrow('insert failed')
+    await expect(inviteUser(ORG_ID, 'new@example.com', ['Scheduler'])).rejects.toThrow('RPC failed')
   })
 })
 
@@ -278,5 +288,120 @@ describe('revokeMember', () => {
     supabase.rpc.mockResolvedValue({ error: { message: 'Active or suspended membership not found' } })
 
     await expect(revokeMember(ORG_ID, MEMBERSHIP_ID)).rejects.toThrow('Active or suspended membership not found')
+  })
+})
+
+// ─── listPendingInvites ───────────────────────────────────────────────────────
+
+describe('listPendingInvites', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns pending invites from RPC', async () => {
+    const invites = [
+      { user_id: OTHER_USER_ID, email: 'user@example.com' },
+    ]
+    const supabase = makeSupabase()
+    supabase.rpc.mockResolvedValue({ data: invites, error: null })
+
+    const result = await listPendingInvites(ORG_ID)
+
+    expect(supabase.rpc).toHaveBeenCalledWith('list_pending_org_invites', {
+      target_org_id: ORG_ID,
+    })
+    expect(result).toEqual(invites)
+  })
+
+  it('returns empty array on RPC error', async () => {
+    const supabase = makeSupabase()
+    supabase.rpc.mockResolvedValue({ data: null, error: { message: 'RPC failed' } })
+
+    const result = await listPendingInvites(ORG_ID)
+
+    expect(result).toEqual([])
+  })
+
+  it('returns empty array when data is null', async () => {
+    const supabase = makeSupabase()
+    supabase.rpc.mockResolvedValue({ data: null, error: null })
+
+    const result = await listPendingInvites(ORG_ID)
+
+    expect(result).toEqual([])
+  })
+})
+
+// ─── deleteInvite ─────────────────────────────────────────────────────────────
+
+describe('deleteInvite', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('deletes invite via RPC and removes auth user', async () => {
+    const supabase = makeSupabase()
+    const admin = makeAdminClient()
+
+    supabase.rpc.mockResolvedValue({ error: null })
+    admin.auth.admin.deleteUser.mockResolvedValue({ error: null })
+
+    await expect(deleteInvite(ORG_ID, OTHER_USER_ID)).resolves.toBeUndefined()
+
+    expect(supabase.rpc).toHaveBeenCalledWith('delete_org_invite', {
+      target_org_id: ORG_ID,
+      target_user_id: OTHER_USER_ID,
+    })
+    expect(admin.auth.admin.deleteUser).toHaveBeenCalledWith(OTHER_USER_ID)
+  })
+
+  it('throws when delete_org_invite RPC fails', async () => {
+    const supabase = makeSupabase()
+    supabase.rpc.mockResolvedValue({ error: { message: 'RPC failed' } })
+
+    await expect(deleteInvite(ORG_ID, OTHER_USER_ID)).rejects.toThrow('RPC failed')
+  })
+
+  it('throws when deleteUser auth fails', async () => {
+    const supabase = makeSupabase()
+    const admin = makeAdminClient()
+
+    supabase.rpc.mockResolvedValue({ error: null })
+    admin.auth.admin.deleteUser.mockResolvedValue({ error: { message: 'delete failed' } })
+
+    await expect(deleteInvite(ORG_ID, OTHER_USER_ID)).rejects.toThrow('delete failed')
+  })
+})
+
+// ─── resendInvite ─────────────────────────────────────────────────────────────
+
+describe('resendInvite', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('deletes existing invite and creates new one', async () => {
+    const supabase = makeSupabase()
+    const admin = makeAdminClient()
+
+    supabase.rpc
+      .mockResolvedValueOnce({ error: null })  // delete_org_invite
+      .mockResolvedValueOnce({ error: null })  // create_org_invite
+
+    admin.auth.admin.deleteUser.mockResolvedValue({ error: null })
+    admin.auth.admin.inviteUserByEmail.mockResolvedValue({
+      data: { user: { id: OTHER_USER_ID } },
+      error: null,
+    })
+
+    await resendInvite(ORG_ID, OTHER_USER_ID, 'user@example.com', ['Scheduler'])
+
+    expect(supabase.rpc).toHaveBeenCalledWith('delete_org_invite', {
+      target_org_id: ORG_ID,
+      target_user_id: OTHER_USER_ID,
+    })
+    expect(admin.auth.admin.deleteUser).toHaveBeenCalledWith(OTHER_USER_ID)
+    expect(admin.auth.admin.inviteUserByEmail).toHaveBeenCalledWith('user@example.com', {
+      data: { pending_org_id: ORG_ID },
+    })
+    expect(supabase.rpc).toHaveBeenCalledWith('create_org_invite', expect.objectContaining({
+      target_org_id: ORG_ID,
+      target_email: 'user@example.com',
+      initial_roles: ['Scheduler'],
+    }))
   })
 })
