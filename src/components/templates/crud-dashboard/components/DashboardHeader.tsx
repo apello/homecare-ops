@@ -1,15 +1,15 @@
 // src/components/templates/crud-dashboard/components/DashboardHeader.tsx
 'use client';
 import * as React from 'react';
-import { styled, useTheme } from '@mui/material/styles';
+import { styled } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import MuiAppBar from '@mui/material/AppBar';
 import IconButton from '@mui/material/IconButton';
 import Toolbar from '@mui/material/Toolbar';
 import Tooltip from '@mui/material/Tooltip';
-import Typography from '@mui/material/Typography';
 import MenuIcon from '@mui/icons-material/Menu';
 import MenuOpenIcon from '@mui/icons-material/MenuOpen';
+import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import Stack from '@mui/material/Stack';
 import Link from 'next/link';
 import ThemeSwitcher from './ThemeSwitcher';
@@ -40,12 +40,9 @@ export interface DashboardHeaderProps {
 
 export default function DashboardHeader({
   logo,
-  title,
   menuOpen,
   onToggleMenu,
 }: DashboardHeaderProps) {
-  const theme = useTheme();
-
   const handleMenuOpen = React.useCallback(
     () => onToggleMenu(!menuOpen),
     [menuOpen, onToggleMenu],
@@ -88,7 +85,12 @@ export default function DashboardHeader({
             </Link>
           </Stack>
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center', marginLeft: 'auto' }}>
-            <Stack direction="row" sx={{ alignItems: 'center' }}>
+            <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
+              <Tooltip title="Notifications" enterDelay={1000}>
+                <IconButton size="small" aria-label="Notifications">
+                  <NotificationsNoneIcon />
+                </IconButton>
+              </Tooltip>
               <ThemeSwitcher />
             </Stack>
           </Stack>

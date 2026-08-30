@@ -1,0 +1,22 @@
+{
+  "weights": {
+    "qualification": 0.4,
+    "availability": 0.25,
+    "travel": 0.2,
+    "preference": 0.1,
+    "schedule": 0.05
+  },
+  "travel": {
+    "preferred_minutes": 25,
+    "max_minutes": 45,
+    "review_threshold_minutes": 40
+  },
+  "availability": {
+    "min_overlap_pct": 50,
+    "review_overlap_pct": 95
+  },
+  "score_thresholds": {
+    "recommended": 80,
+    "review_required": 60
+  }
+}

@@ -312,17 +312,6 @@ export type ServiceCodeMapping = {
   created_at: string
 }
 
-export type MatchingRuleset = {
-  id: string
-  ruleset_key: string
-  version: string
-  description: string | null
-  configuration: Record<string, unknown>
-  active: boolean
-  created_at: string
-  created_by_user_id: string | null
-}
-
 export type NotificationTemplate = {
   id: string
   template_key: string
@@ -769,7 +758,6 @@ export type Database = {
       membership_permission_grants:       TableDef<MembershipPermissionGrant>
       billing_services:                   TableDef<BillingService>
       service_code_mappings:              TableDef<ServiceCodeMapping>
-      matching_rulesets:                  TableDef<MatchingRuleset>
       notification_templates:             TableDef<NotificationTemplate>
       patients:                           TableDef<Patient>
       patient_addresses:                  TableDef<PatientAddress>
