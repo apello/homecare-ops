@@ -3,6 +3,7 @@
 import * as React from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import FormControl from '@mui/material/FormControl'
@@ -18,7 +19,7 @@ import { upsertPatientAddressAction } from '../actions'
 
 const ADDRESS_TYPES: AddressType[] = ['Service', 'Mailing', 'Other']
 
-interface AddressFormValues {
+interface PatientAddressFormValues {
   address_type: AddressType
   address_line_1: string
   address_line_2: string
@@ -27,42 +28,65 @@ interface AddressFormValues {
   zip_code: string
 }
 
-export interface AddressFormProps {
+export interface PatientAddressFormProps {
   patient: Patient
   orgId: string
   address?: PatientAddress
 }
 
-export default function AddressForm({ patient, orgId, address }: AddressFormProps) {
+export default function PatientAddressForm({ patient, orgId, address }: PatientAddressFormProps) {
   const router = useRouter()
   const notifications = useNotifications()
   const isEditing = !!address
   const fullName = [patient.first_name, patient.middle_name, patient.last_name].filter(Boolean).join(' ')
 
-  const [values, setValues] = React.useState<AddressFormValues>({
-    address_type: address?.address_type ?? 'Service',
-    address_line_1: address?.address_line_1 ?? '',
-    address_line_2: address?.address_line_2 ?? '',
-    city: address?.city ?? '',
-    state: address?.state ?? '',
-    zip_code: address?.zip_code ?? '',
-  })
+  const initialValues = React.useMemo(
+    () => ({
+      address_type: address?.address_type ?? 'Service',
+      address_line_1: address?.address_line_1 ?? '',
+      address_line_2: address?.address_line_2 ?? '',
+      city: address?.city ?? '',
+      state: address?.state ?? '',
+      zip_code: address?.zip_code ?? '',
+    }),
+    [address],
+  )
+
+  const [values, setValues] = React.useState<PatientAddressFormValues>(initialValues)
   const [errors, setErrors] = React.useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = React.useState(false)
 
+  const hasChanges = React.useMemo(() => {
+    const normalize = (val: PatientAddressFormValues) => ({
+      address_type: val.address_type ?? '',
+      address_line_1: val.address_line_1 ?? '',
+      address_line_2: val.address_line_2 ?? '',
+      city: val.city ?? '',
+      state: val.state ?? '',
+      zip_code: val.zip_code ?? '',
+    })
+    return JSON.stringify(normalize(values)) !== JSON.stringify(normalize(initialValues))
+  }, [values, initialValues])
+
+  const handleReset = React.useCallback(() => {
+    setValues(initialValues)
+    setErrors({})
+  }, [initialValues])
+
   const handleBackClick = React.useCallback(() => {
-    router.push(`/patients/${patient.id}`)
+    router.push(`/patients/${patient.id}/address`)
   }, [router, patient.id])
 
   const handleChange = React.useCallback(
-    <K extends keyof AddressFormValues>(field: K) =>
+    <K extends keyof PatientAddressFormValues>(field: K) =>
       (e: React.ChangeEvent<HTMLInputElement | { value: unknown }>) => {
-        setValues((prev) => ({ ...prev, [field]: e.target.value as AddressFormValues[K] }))
+        setValues((prev) => ({ ...prev, [field]: e.target.value as PatientAddressFormValues[K] }))
         setErrors({})
       },
     [],
   )
 
+  // TODO: Add Google Maps integration, make addresses unique, and clarify what service/mailing is primary
   const handleSubmit = React.useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault()
@@ -111,7 +135,7 @@ export default function AddressForm({ patient, orgId, address }: AddressFormProp
           autoHideDuration: 3000,
         })
 
-        router.push(`/patients/${patient.id}`)
+        router.push(`/patients/${patient.id}/address`)
         router.refresh()
       } finally {
         setIsSubmitting(false)
@@ -162,14 +186,6 @@ export default function AddressForm({ patient, orgId, address }: AddressFormProp
         />
 
         <TextField
-          label="Address Line 2"
-          value={values.address_line_2}
-          onChange={handleChange('address_line_2')}
-          fullWidth
-          disabled={isSubmitting}
-        />
-
-        <TextField
           label="City"
           value={values.city}
           onChange={handleChange('city')}
@@ -202,12 +218,34 @@ export default function AddressForm({ patient, orgId, address }: AddressFormProp
           disabled={isSubmitting}
         />
 
+        <Box sx={{ width: '100%', mt: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Chip
+            label={hasChanges ? 'Unsaved Changes' : 'No Changes'}
+            color={hasChanges ? 'success' : 'default'}
+            variant="outlined"
+          />
+          <Stack direction="row" spacing={1}>
+            <Button
+              type="reset"
+              variant="text"
+              onClick={handleReset}
+              disabled={isSubmitting || !hasChanges}
+            >
+              Reset
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={isSubmitting || !hasChanges}
+            >
+              {isSubmitting ? 'Saving...' : 'Save Address'}
+            </Button>
+          </Stack>
+        </Box>
+
         <Stack direction="row" spacing={2} sx={{ justifyContent: 'space-between' }}>
           <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={handleBackClick} disabled={isSubmitting}>
             Back
-          </Button>
-          <Button type="submit" variant="contained" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving...' : 'Save Address'}
           </Button>
         </Stack>
       </Box>

@@ -74,22 +74,22 @@ export default function PatientForm({
       />
 
       <TextField
+        label="Middle Name"
+        value={formState.values.middle_name ?? ''}
+        onChange={(e) => onMiddleNameChange(e.target.value)}
+        error={!!formState.errors.middle_name}
+        helperText={formState.errors.middle_name}
+        fullWidth
+        disabled={isSubmitting}
+      />
+
+      <TextField
         label="Last Name"
         value={formState.values.last_name}
         onChange={(e) => onLastNameChange(e.target.value)}
         error={!!formState.errors.last_name}
         helperText={formState.errors.last_name}
         required
-        fullWidth
-        disabled={isSubmitting}
-      />
-
-      <TextField
-        label="Middle Name"
-        value={formState.values.middle_name ?? ''}
-        onChange={(e) => onMiddleNameChange(e.target.value)}
-        error={!!formState.errors.middle_name}
-        helperText={formState.errors.middle_name}
         fullWidth
         disabled={isSubmitting}
       />
@@ -109,7 +109,7 @@ export default function PatientForm({
       <Box sx={{ width: '100%', mt: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Chip
           label={hasChanges ? 'Unsaved Changes' : 'No Changes'}
-          color={hasChanges ? 'warning' : 'default'}
+          color={hasChanges ? 'success' : 'default'}
           variant="outlined"
         />
         <Stack direction="row" spacing={1}>

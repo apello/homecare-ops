@@ -3,16 +3,15 @@ import Typography from '@mui/material/Typography'
 import { requireAuth, getActiveMembership } from '@/lib/auth/server'
 import { hasPermission } from '@/lib/permissions'
 import UnauthorizedMessage from '@/components/UnauthorizedMessage'
-import { getPatientAction, listPatientAddressesAction } from '../../actions'
-import PatientAddressList from '../../_components/PatientAddressList'
+import { getPatientAction } from '../../actions'
 
-interface AddressListPageProps {
+interface MatchingPageProps {
   params: Promise<{
     patientId: string
   }>
 }
 
-export default async function AddressListPage({ params }: AddressListPageProps) {
+export default async function MatchingPage({ params }: MatchingPageProps) {
   await requireAuth()
   const membership = await getActiveMembership()
   if (!membership) redirect('/login')
@@ -23,13 +22,7 @@ export default async function AddressListPage({ params }: AddressListPageProps) 
   }
 
   const resolvedParams = await params
-  const orgId = membership.organization_id
-
-  const [patientResult, addressesResult] = await Promise.all([
-    getPatientAction(orgId, resolvedParams.patientId),
-    listPatientAddressesAction(orgId, resolvedParams.patientId),
-  ])
-
+  const patientResult = await getPatientAction(membership.organization_id, resolvedParams.patientId)
   const patient = patientResult.success ? patientResult.data ?? null : null
 
   if (!patient) {
@@ -37,10 +30,6 @@ export default async function AddressListPage({ params }: AddressListPageProps) 
   }
 
   return (
-    <PatientAddressList
-      patient={patient}
-      orgId={orgId}
-      addresses={addressesResult.success ? addressesResult.data ?? [] : []}
-    />
+    <Typography sx={{ p: 3 }}>Caregiver matching isn't available yet. Check back soon</Typography>
   )
 }

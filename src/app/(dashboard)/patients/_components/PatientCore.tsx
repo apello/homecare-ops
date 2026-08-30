@@ -3,11 +3,14 @@
 import * as React from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Chip from '@mui/material/Chip'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import EditIcon from '@mui/icons-material/Edit'
+import AutorenewIcon from '@mui/icons-material/Autorenew'
+import Divider from '@mui/material/Divider'
+import Card from '@mui/material/Card'
+import Tooltip from '@mui/material/Tooltip'
 import { useRouter } from 'next/navigation'
 import PageContainer from '@/components/templates/crud-dashboard/components/PageContainer'
 import type { Patient, PatientAddress, PatientRequirement } from '@/types'
@@ -16,32 +19,56 @@ interface InfoSectionProps {
   title: string
   onEditClick: () => void
   children: React.ReactNode
+  buttonText?: string
+  tooltipText?: string
 }
 
-function InfoSection({ title, onEditClick, children }: InfoSectionProps) {
+function InfoSection({ title, onEditClick, children, buttonText = 'Edit', tooltipText }: InfoSectionProps) {
+  const isEdit = buttonText === 'Edit'
+  const button = (
+    <Button
+      size="small"
+      variant="outlined"
+      sx={{
+        borderColor: 'divider',
+        '&:hover': {
+          borderColor: 'divider',
+        },
+      }}
+      startIcon={isEdit ? <EditIcon /> : <AutorenewIcon />}
+      onClick={onEditClick}
+    >
+      {buttonText}
+    </Button>
+  )
+
   return (
-    <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
-      <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+    <Card sx={{ p: 0, bgcolor: 'background.default', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+      <Stack
+        direction="row"
+        sx={{
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          p: 2,
+          bgcolor: 'action.hover'
+        }}
+      >
+        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
           {title}
         </Typography>
-        <Button
-          size="small"
-          variant="outlined"
-          sx={{
-            borderColor: 'divider',
-            '&:hover': {
-              borderColor: 'divider',
-            },
-          }}
-          startIcon={<EditIcon />}
-          onClick={onEditClick}
-        >
-          Edit
-        </Button>
+        {tooltipText ? (
+          <Tooltip title={tooltipText}>
+            <span>{button}</span>
+          </Tooltip>
+        ) : (
+          button
+        )}
       </Stack>
-      {children}
-    </Box>
+      <Divider />
+      <Box sx={{ p: 2 }}>
+        {children}
+      </Box>
+    </Card>
   )
 }
 
@@ -76,14 +103,16 @@ export default function PatientCore({ patient, addresses, requirements }: Patien
       ]}
     >
       <Stack spacing={2} sx={{ width: '100%', mt: 1 }}>
-        <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-            Caregiver Assignment
-          </Typography>
+        <InfoSection
+          title="Caregiver Assignment"
+          onEditClick={goTo('matching')}
+          buttonText="Match Patient"
+          tooltipText="Match Patient will generate a list of recommended caregivers for this patient"
+        >
           <Typography variant="body2" color="text.secondary">
             No caregiver for this patient
           </Typography>
-        </Box>
+        </InfoSection>
 
         <InfoSection title="Patient Information" onEditClick={goTo('edit')}>
           <Typography variant="body2">Name: {fullName || '—'}</Typography>

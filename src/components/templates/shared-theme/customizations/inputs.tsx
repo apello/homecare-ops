@@ -69,6 +69,13 @@ export const inputsCustomizations: Components<Theme> = {
               '&:active': {
                 backgroundColor: gray[800],
               },
+              '&.Mui-disabled': {
+                color: (theme.vars || theme).palette.action.disabled,
+                backgroundColor: (theme.vars || theme).palette.action.disabledBackground,
+                backgroundImage: 'none',
+                boxShadow: 'none',
+                border: `1px solid ${(theme.vars || theme).palette.action.disabledBackground}`,
+              },
               ...theme.applyStyles('dark', {
                 color: 'black',
                 backgroundColor: gray[50],
@@ -82,6 +89,13 @@ export const inputsCustomizations: Components<Theme> = {
                 },
                 '&:active': {
                   backgroundColor: gray[400],
+                },
+                '&.Mui-disabled': {
+                  color: (theme.vars || theme).palette.action.disabled,
+                  backgroundColor: (theme.vars || theme).palette.action.disabledBackground,
+                  backgroundImage: 'none',
+                  boxShadow: 'none',
+                  border: `1px solid ${(theme.vars || theme).palette.action.disabledBackground}`,
                 },
               }),
             },
@@ -104,6 +118,13 @@ export const inputsCustomizations: Components<Theme> = {
               '&:active': {
                 backgroundColor: brand[700],
                 backgroundImage: 'none',
+              },
+              '&.Mui-disabled': {
+                color: (theme.vars || theme).palette.action.disabled,
+                backgroundColor: (theme.vars || theme).palette.action.disabledBackground,
+                backgroundImage: 'none',
+                boxShadow: 'none',
+                border: `1px solid ${(theme.vars || theme).palette.action.disabledBackground}`,
               },
             },
           },

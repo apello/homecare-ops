@@ -56,7 +56,7 @@ export async function getPatientAction(
 
 export async function createPatientAction(input: unknown): Promise<ActionResponse<Patient>> {
   try {
-    await requireAuth()
+    const user = await requireAuth()
     const parsed = CreatePatientSchema.safeParse(input)
     if (!parsed.success) {
       console.error('[createPatientAction] validation failed:', parsed.error.flatten())
@@ -65,7 +65,7 @@ export async function createPatientAction(input: unknown): Promise<ActionRespons
     await requirePermission(parsed.data.organizationId, 'patients.manage')
     const data = await patientsService.createPatient(
       parsed.data.organizationId,
-      parsed.data.organizationId, // userId - would come from session in real app
+      user.id,
       {
         first_name: parsed.data.first_name,
         last_name: parsed.data.last_name,
@@ -89,7 +89,7 @@ export async function createPatientAction(input: unknown): Promise<ActionRespons
 
 export async function updatePatientAction(input: unknown): Promise<ActionResponse<Patient>> {
   try {
-    await requireAuth()
+    const user = await requireAuth()
     const parsed = UpdatePatientSchema.safeParse(input)
     if (!parsed.success) {
       console.error('[updatePatientAction] validation failed:', parsed.error.flatten())
@@ -99,7 +99,7 @@ export async function updatePatientAction(input: unknown): Promise<ActionRespons
     const data = await patientsService.updatePatient(
       parsed.data.organizationId,
       parsed.data.patientId,
-      parsed.data.organizationId, // userId
+      user.id,
       {
         first_name: parsed.data.first_name,
         last_name: parsed.data.last_name,
@@ -121,7 +121,7 @@ export async function updatePatientAction(input: unknown): Promise<ActionRespons
 
 export async function archivePatientAction(input: unknown): Promise<ActionResponse> {
   try {
-    await requireAuth()
+    const user = await requireAuth()
     const parsed = ArchivePatientSchema.safeParse(input)
     if (!parsed.success) {
       console.error('[archivePatientAction] validation failed:', parsed.error.flatten())
@@ -131,7 +131,7 @@ export async function archivePatientAction(input: unknown): Promise<ActionRespon
     await patientsService.archivePatient(
       parsed.data.organizationId,
       parsed.data.patientId,
-      parsed.data.organizationId, // userId
+      user.id,
     )
     revalidatePath('/patients')
     return { success: true }
@@ -218,7 +218,7 @@ export async function listPatientRequirementsAction(
 
 export async function upsertPatientRequirementAction(input: unknown): Promise<ActionResponse<PatientRequirement>> {
   try {
-    await requireAuth()
+    const user = await requireAuth()
     const parsed = PatientRequirementSchema.safeParse(input)
     if (!parsed.success) {
       console.error('[upsertPatientRequirementAction] validation failed:', parsed.error.flatten())
@@ -228,7 +228,7 @@ export async function upsertPatientRequirementAction(input: unknown): Promise<Ac
     const data = await patientsService.upsertPatientRequirement(
       parsed.data.organizationId,
       parsed.data.patientId,
-      parsed.data.organizationId, // userId
+      user.id,
       {
         requirement_type: parsed.data.requirement_type,
         requirement_code: parsed.data.requirement_code,

@@ -36,7 +36,13 @@ function PatientEditForm({ patient, orgId }: PatientEditFormProps) {
   })
 
   const hasChanges = React.useMemo(() => {
-    return JSON.stringify(formState.values) !== JSON.stringify(initialValues)
+    const normalize = (values: PatientFormState['values']) => ({
+      first_name: values.first_name ?? '',
+      last_name: values.last_name ?? '',
+      middle_name: values.middle_name ?? '',
+      date_of_birth: values.date_of_birth ?? '',
+    })
+    return JSON.stringify(normalize(formState.values)) !== JSON.stringify(normalize(initialValues))
   }, [formState.values, initialValues])
 
   const handleFirstNameChange = React.useCallback((value: string) => {

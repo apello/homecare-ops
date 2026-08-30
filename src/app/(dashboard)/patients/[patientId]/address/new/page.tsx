@@ -4,7 +4,7 @@ import { requireAuth, getActiveMembership } from '@/lib/auth/server'
 import { hasPermission } from '@/lib/permissions'
 import UnauthorizedMessage from '@/components/UnauthorizedMessage'
 import { getPatientAction } from '../../../actions'
-import AddressForm from '../../../_components/AddressForm'
+import PatientAddressForm from '../../../_components/PatientAddressForm'
 
 interface AddressNewPageProps {
   params: Promise<{
@@ -32,5 +32,5 @@ export default async function AddressNewPage({ params }: AddressNewPageProps) {
     return <Typography sx={{ p: 3 }}>Patient not found.</Typography>
   }
 
-  return <AddressForm patient={patient} orgId={orgId} />
+  return <PatientAddressForm patient={patient} orgId={orgId} />
 }
