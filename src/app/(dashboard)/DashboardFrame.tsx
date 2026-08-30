@@ -5,6 +5,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import HomeIcon from '@mui/icons-material/Home';
 import LogoutIcon from '@mui/icons-material/Logout';
 import CssBaseline from '@mui/material/CssBaseline';
+import AccessibleIcon from '@mui/icons-material/Accessible';
 
 import DashboardLayout from '@/components/templates/crud-dashboard/components/DashboardLayout';
 import NotificationsProvider from '@/components/templates/crud-dashboard/hooks/useNotifications/NotificationsProvider';
@@ -27,6 +28,13 @@ const navigation: NavigationItem[] = [
     title: 'Home',
     icon: <HomeIcon />,
     href: '/dashboard',
+  },
+  {
+    kind: 'page',
+    id: 'patients',
+    title: 'Patients',
+    icon: <AccessibleIcon />,
+    href: '/patients',
   },
   { kind: 'header', title: 'Settings' },
   {
