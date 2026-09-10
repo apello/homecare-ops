@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:status": "supabase migration list",
+    "db:push": "supabase db push",
+    "db:dump": "supabase db dump --linked -f supabase/schema.sql"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
