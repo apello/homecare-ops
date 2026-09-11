@@ -6,6 +6,7 @@ import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
+import Typography from '@mui/material/Typography'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import type { Patient } from '@/types'
 
@@ -15,22 +16,30 @@ export interface PatientFormState {
     last_name: string
     middle_name?: string
     date_of_birth?: string
+    address_line_1?: string
+    address_line_2?: string
+    city?: string
+    state?: string
+    zip_code?: string
   }
   errors: Record<string, string>
 }
 
 interface PatientFormProps {
-  patient: Patient
+  patient?: Patient
   formState: PatientFormState
   hasChanges?: boolean
   onFirstNameChange: (value: string) => void
   onLastNameChange: (value: string) => void
   onMiddleNameChange: (value: string) => void
   onDateOfBirthChange: (value: string) => void
+  onAddressFieldChange?: (field: 'address_line_1' | 'address_line_2' | 'city' | 'state' | 'zip_code', value: string) => void
   onSubmit: (values: PatientFormState['values']) => void
   onReset: () => void
   onBackClick?: () => void
   isSubmitting?: boolean
+  showAddress?: boolean
+  submitLabel?: string
 }
 
 export default function PatientForm({
@@ -40,10 +49,13 @@ export default function PatientForm({
   onLastNameChange,
   onMiddleNameChange,
   onDateOfBirthChange,
+  onAddressFieldChange,
   onSubmit,
   onReset,
   onBackClick,
   isSubmitting = false,
+  showAddress = false,
+  submitLabel = 'Save Changes',
 }: PatientFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -106,6 +118,62 @@ export default function PatientForm({
         InputLabelProps={{ shrink: true }}
       />
 
+      {showAddress && onAddressFieldChange ? (
+        <>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+            Service Address (optional)
+          </Typography>
+
+          <TextField
+            label="Address Line 1"
+            value={formState.values.address_line_1 ?? ''}
+            onChange={(e) => onAddressFieldChange('address_line_1', e.target.value)}
+            error={!!formState.errors.address_line_1}
+            helperText={formState.errors.address_line_1}
+            fullWidth
+            disabled={isSubmitting}
+          />
+
+          <TextField
+            label="Address Line 2"
+            value={formState.values.address_line_2 ?? ''}
+            onChange={(e) => onAddressFieldChange('address_line_2', e.target.value)}
+            fullWidth
+            disabled={isSubmitting}
+          />
+
+          <Stack direction="row" spacing={2}>
+            <TextField
+              label="City"
+              value={formState.values.city ?? ''}
+              onChange={(e) => onAddressFieldChange('city', e.target.value)}
+              error={!!formState.errors.city}
+              helperText={formState.errors.city}
+              fullWidth
+              disabled={isSubmitting}
+            />
+            <TextField
+              label="State"
+              value={formState.values.state ?? ''}
+              onChange={(e) => onAddressFieldChange('state', e.target.value)}
+              error={!!formState.errors.state}
+              helperText={formState.errors.state}
+              fullWidth
+              disabled={isSubmitting}
+            />
+            <TextField
+              label="ZIP Code"
+              value={formState.values.zip_code ?? ''}
+              onChange={(e) => onAddressFieldChange('zip_code', e.target.value)}
+              error={!!formState.errors.zip_code}
+              helperText={formState.errors.zip_code}
+              fullWidth
+              disabled={isSubmitting}
+            />
+          </Stack>
+        </>
+      ) : null}
+
       <Box sx={{ width: '100%', mt: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Chip
           label={hasChanges ? 'Unsaved Changes' : 'No Changes'}
@@ -126,7 +194,7 @@ export default function PatientForm({
             variant="contained"
             disabled={isSubmitting || !hasChanges}
           >
-            {isSubmitting ? 'Saving...' : 'Save Changes'}
+            {isSubmitting ? 'Saving...' : submitLabel}
           </Button>
         </Stack>
       </Box>
