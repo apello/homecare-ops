@@ -16,10 +16,17 @@ import {
   gridClasses,
 } from '@mui/x-data-grid'
 import { useRouter } from 'next/navigation'
+import { useDialogs } from '@/components/templates/crud-dashboard/hooks/useDialogs/useDialogs'
+import useNotifications from '@/components/templates/crud-dashboard/hooks/useNotifications/useNotifications'
 import PageContainer from '@/components/templates/crud-dashboard/components/PageContainer'
 import type { Patient, PatientAddress } from '@/types'
+import { deactivatePatientAddressAction } from '../actions'
 
-function addressColumns(onAddressEdit: (address: PatientAddress) => void): GridColDef<PatientAddress>[] {
+function addressColumns(
+  onAddressEdit: (address: PatientAddress) => void,
+  onAddressDelete: (address: PatientAddress) => void,
+  isDeleting: boolean,
+): GridColDef<PatientAddress>[] {
   return [
     {
       field: 'address_type',
@@ -51,17 +58,14 @@ function addressColumns(onAddressEdit: (address: PatientAddress) => void): GridC
           icon={<EditIcon />}
           label="Edit"
           onClick={() => onAddressEdit(row)}
+          disabled={isDeleting}
         />,
-        // TODO: Addresses have no deactivate/delete backend support yet (unlike
-        // patient requirements, which have deactivatePatientRequirementAction).
-        // The patient_addresses table already has an `active` column, so a
-        // deactivatePatientAddressAction mirroring the requirement one should
-        // be added before enabling this action.
         <GridActionsCellItem
           key="delete"
           icon={<DeleteIcon />}
-          label="Delete (not yet available)"
-          disabled
+          label="Delete"
+          onClick={() => onAddressDelete(row)}
+          disabled={isDeleting}
         />,
       ],
     },
@@ -74,9 +78,13 @@ export interface PatientAddressListProps {
   addresses: PatientAddress[]
 }
 
-export default function PatientAddressList({ patient, addresses }: PatientAddressListProps) {
+export default function PatientAddressList({ patient, orgId, addresses: initialAddresses }: PatientAddressListProps) {
   const router = useRouter()
+  const dialogs = useDialogs()
+  const notifications = useNotifications()
   const fullName = [patient.first_name, patient.middle_name, patient.last_name].filter(Boolean).join(' ')
+  const [addresses, setAddresses] = React.useState(initialAddresses)
+  const [isDeleting, setIsDeleting] = React.useState(false)
 
   const handleBackClick = React.useCallback(() => {
     router.push(`/patients/${patient.id}`)
@@ -93,7 +101,44 @@ export default function PatientAddressList({ patient, addresses }: PatientAddres
     [router, patient.id],
   )
 
-  const columns = React.useMemo(() => addressColumns(handleEdit), [handleEdit])
+  const handleDelete = React.useCallback(
+    async (address: PatientAddress) => {
+      const confirmed = await dialogs.confirm(
+        `Remove the ${address.address_type.toLowerCase()} address at ${address.address_line_1}?`,
+        { title: 'Remove address?', severity: 'warning', okText: 'Remove' },
+      )
+      if (!confirmed) return
+
+      setIsDeleting(true)
+      try {
+        const result = await deactivatePatientAddressAction({
+          organizationId: orgId,
+          patientId: patient.id,
+          addressId: address.id,
+        })
+
+        if (!result.success) {
+          notifications.show(result.error ?? 'Failed to remove address.', {
+            severity: 'error',
+            autoHideDuration: 4000,
+          })
+          return
+        }
+
+        setAddresses((prev) => prev.filter((item) => item.id !== address.id))
+        notifications.show('Address removed.', { severity: 'success', autoHideDuration: 3000 })
+        router.refresh()
+      } finally {
+        setIsDeleting(false)
+      }
+    },
+    [dialogs, notifications, orgId, patient.id, router],
+  )
+
+  const columns = React.useMemo(
+    () => addressColumns(handleEdit, handleDelete, isDeleting),
+    [handleEdit, handleDelete, isDeleting],
+  )
 
   return (
     <PageContainer
@@ -123,6 +168,7 @@ export default function PatientAddressList({ patient, addresses }: PatientAddres
               disableRowSelectionOnClick
               hideFooter
               sx={{
+                opacity: isDeleting ? 0.6 : 1,
                 [`& .${gridClasses.columnHeader}, & .${gridClasses.cell}`]: { outline: 'transparent' },
                 [`& .${gridClasses.columnHeader}:focus-within, & .${gridClasses.cell}:focus-within`]: {
                   outline: 'none',

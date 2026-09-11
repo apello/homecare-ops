@@ -76,7 +76,7 @@ export const CreatePatientSchema = z.object({
   first_name: z.string().min(1, 'First name is required'),
   last_name: z.string().min(1, 'Last name is required'),
   middle_name: z.string().nullable().optional(),
-  date_of_birth: dateShape.nullable().optional(),
+  date_of_birth: dateShape,
   patient_external_id: z.string().nullable().optional(),
   status: patientStatusEnum.optional(),
   address: PatientAddressSchema.optional(),
@@ -92,7 +92,7 @@ export const UpdatePatientSchema = z.object({
   first_name: z.string().min(1).optional(),
   last_name: z.string().min(1).optional(),
   middle_name: z.string().nullable().optional(),
-  date_of_birth: dateShape.nullable().optional(),
+  date_of_birth: dateShape,
   patient_external_id: z.string().nullable().optional(),
   status: patientStatusEnum.optional(),
 }).strict().refine(
@@ -171,6 +171,16 @@ export const UpsertPatientAddressSchema = z.object({
 }).strict()
 
 export type UpsertPatientAddressInput = z.infer<typeof UpsertPatientAddressSchema>
+
+// ─── Deactivate Address ───────────────────────────────────────────────────────
+
+export const DeactivatePatientAddressSchema = z.object({
+  organizationId: uuidShape,
+  patientId: uuidShape,
+  addressId: uuidShape,
+}).strict()
+
+export type DeactivatePatientAddressInput = z.infer<typeof DeactivatePatientAddressSchema>
 
 // ─── Patient Contact ──────────────────────────────────────────────────────────
 

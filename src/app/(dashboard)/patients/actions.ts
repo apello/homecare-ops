@@ -9,6 +9,7 @@ import {
   PatientRequirementSchema,
   ArchivePatientSchema,
   UpsertPatientAddressSchema,
+  DeactivatePatientAddressSchema,
   UpsertPatientContactSchema,
   DeactivatePatientContactSchema,
 } from '@/lib/schemas/patients.schema'
@@ -197,6 +198,30 @@ export async function upsertPatientAddressAction(input: unknown): Promise<Action
     console.error('[upsertPatientAddressAction] failed:', { error: err })
     const message = err instanceof Error ? err.message : undefined
     return { success: false, error: message ?? 'Unable to complete this action.' }
+  }
+}
+
+// ─── Deactivate Patient Address ───────────────────────────────────────────────
+
+export async function deactivatePatientAddressAction(input: unknown): Promise<ActionResponse> {
+  try {
+    await requireAuth()
+    const parsed = DeactivatePatientAddressSchema.safeParse(input)
+    if (!parsed.success) {
+      console.error('[deactivatePatientAddressAction] validation failed:', parsed.error.flatten())
+      return { success: false, fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]> }
+    }
+    await requirePermission(parsed.data.organizationId, 'patients.manage')
+    await patientsService.deactivatePatientAddress(
+      parsed.data.organizationId,
+      parsed.data.patientId,
+      parsed.data.addressId,
+    )
+    revalidatePath(`/patients/${parsed.data.patientId}`)
+    return { success: true }
+  } catch (err) {
+    console.error('[deactivatePatientAddressAction] failed:', { error: err })
+    return { success: false, error: err instanceof Error ? err.message : 'Unable to complete this action.' }
   }
 }
 

@@ -281,6 +281,26 @@ export async function upsertPatientAddress(
   return addressData as PatientAddress
 }
 
+export async function deactivatePatientAddress(
+  orgId: string,
+  patientId: string,
+  addressId: string,
+): Promise<void> {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('patient_addresses')
+    .update({ active: false, archived_at: new Date().toISOString() } as never)
+    .eq('id', addressId)
+    .eq('organization_id', orgId)
+    .eq('patient_id', patientId)
+
+  if (error) {
+    console.error('[deactivatePatientAddress] update failed:', { orgId, patientId, addressId, error })
+    throw new Error(error.message)
+  }
+}
+
 export async function listPatientRequirements(
   orgId: string,
   patientId: string,
