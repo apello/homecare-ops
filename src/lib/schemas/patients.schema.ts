@@ -43,7 +43,7 @@ const contactRelationshipEnum = z.enum([
 export const CONTACT_TYPES = contactTypeEnum.options
 export const CONTACT_RELATIONSHIPS = contactRelationshipEnum.options
 
-// Business rule: a patient may have at most 5 active contacts on file
+export const MAX_PATIENT_ADDRESSES = addressTypeEnum.options.length
 export const MAX_PATIENT_CONTACTS = 5
 
 const uuidShape = z.string().regex(
@@ -124,6 +124,14 @@ export const PatientRequirementSchema = z
   .strict()
 
 export type PatientRequirementInput = z.infer<typeof PatientRequirementSchema>
+
+export const DeactivatePatientRequirementSchema = z.object({
+  organizationId: uuidShape,
+  patientId: uuidShape,
+  requirementId: uuidShape,
+}).strict()
+
+export type DeactivatePatientRequirementInput = z.infer<typeof DeactivatePatientRequirementSchema>
 
 // ─── Patient List Response ────────────────────────────────────────────────────
 

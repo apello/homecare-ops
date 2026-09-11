@@ -7,6 +7,7 @@ import {
   CreatePatientSchema,
   UpdatePatientSchema,
   PatientRequirementSchema,
+  DeactivatePatientRequirementSchema,
   ArchivePatientSchema,
   UpsertPatientAddressSchema,
   DeactivatePatientAddressSchema,
@@ -281,20 +282,21 @@ export async function upsertPatientRequirementAction(input: unknown): Promise<Ac
 
 // ─── Deactivate Patient Requirement ────────────────────────────────────────────
 
-export async function deactivatePatientRequirementAction(input: {
-  organizationId: string
-  patientId: string
-  requirementId: string
-}): Promise<ActionResponse> {
+export async function deactivatePatientRequirementAction(input: unknown): Promise<ActionResponse> {
   try {
     await requireAuth()
-    await requirePermission(input.organizationId, 'patients.manage')
+    const parsed = DeactivatePatientRequirementSchema.safeParse(input)
+    if (!parsed.success) {
+      console.error('[deactivatePatientRequirementAction] validation failed:', parsed.error.flatten())
+      return { success: false, fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]> }
+    }
+    await requirePermission(parsed.data.organizationId, 'patients.manage')
     await patientsService.deactivatePatientRequirement(
-      input.organizationId,
-      input.patientId,
-      input.requirementId,
+      parsed.data.organizationId,
+      parsed.data.patientId,
+      parsed.data.requirementId,
     )
-    revalidatePath(`/patients/${input.patientId}`)
+    revalidatePath(`/patients/${parsed.data.patientId}`)
     return { success: true }
   } catch (err) {
     console.error('[deactivatePatientRequirementAction] failed:', { input, error: err })

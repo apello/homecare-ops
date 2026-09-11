@@ -243,13 +243,18 @@ export async function upsertPatientAddress(
   const supabase = await createClient()
 
   // First, deactivate existing address of this type
-  await supabase
+  const { error: deactivateError } = await supabase
     .from('patient_addresses')
     .update({ active: false } as never)
     .eq('organization_id', orgId)
     .eq('patient_id', patientId)
     .eq('address_type', addressType)
     .eq('active', true)
+
+  if (deactivateError) {
+    console.error('[upsertPatientAddress] deactivate failed:', { orgId, patientId, addressType, error: deactivateError })
+    throw new Error(deactivateError.message)
+  }
 
   // Then insert new address
   const { data: addressData, error } = await supabase
