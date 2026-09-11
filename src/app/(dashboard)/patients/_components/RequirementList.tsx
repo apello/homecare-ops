@@ -9,6 +9,8 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
+import InfoIcon from '@mui/icons-material/Info'
+import Tooltip from '@mui/material/Tooltip'
 import {
   DataGrid,
   GridActionsCellItem,
@@ -19,8 +21,20 @@ import { useRouter } from 'next/navigation'
 import { useDialogs } from '@/components/templates/crud-dashboard/hooks/useDialogs/useDialogs'
 import useNotifications from '@/components/templates/crud-dashboard/hooks/useNotifications/useNotifications'
 import PageContainer from '@/components/templates/crud-dashboard/components/PageContainer'
-import type { Patient, PatientRequirement } from '@/types'
+import { MATCHING_EFFECT_HELP, VISIBILITY_LEVEL_HELP } from '@/types'
+import type { MatchingEffect, Patient, PatientRequirement, VisibilityLevel } from '@/types'
 import { deactivatePatientRequirementAction } from '../actions'
+
+function HeaderWithHelp({ label, help }: { label: string; help: string }) {
+  return (
+    <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+      <span>{label}</span>
+      <Tooltip title={help}>
+        <InfoIcon fontSize="inherit" color="action" sx={{ display: 'block' }} />
+      </Tooltip>
+    </Stack>
+  )
+}
 
 function requirementColumns(
   onRequirementEdit: (requirement: PatientRequirement) => void,
@@ -41,10 +55,42 @@ function requirementColumns(
       minWidth: 120,
     },
     {
+      field: 'matching_effect',
+      headerName: 'Matching Effect',
+      flex: 1,
+      minWidth: 150,
+      renderHeader: () => (
+        <HeaderWithHelp
+          label="Matching Effect"
+          help="UNCONFIRMED — confirm with the operations team. Required excludes caregivers who do not meet it; Preferred raises matching score without excluding; Review Required requires scheduler review; Exclude removes caregivers who meet it."
+        />
+      ),
+      renderCell: (params) => (
+        <Tooltip
+          title={`UNCONFIRMED — confirm with the operations team. ${
+            MATCHING_EFFECT_HELP[params.value as MatchingEffect] ?? ''
+          }`}
+        >
+          <span>{params.value as string}</span>
+        </Tooltip>
+      ),
+    },
+    {
       field: 'visibility_level',
       headerName: 'Visibility',
       flex: 1,
-      minWidth: 120,
+      minWidth: 140,
+      renderHeader: () => (
+        <HeaderWithHelp
+          label="Visibility"
+          help="Controls who can read this requirement: Operational rows need patients.read_basic; Clinical and Restricted rows need patients.read_clinical."
+        />
+      ),
+      renderCell: (params) => (
+        <Tooltip title={VISIBILITY_LEVEL_HELP[params.value as VisibilityLevel] ?? ''}>
+          <span>{params.value as string}</span>
+        </Tooltip>
+      ),
     },
     {
       field: 'actions',
@@ -147,34 +193,37 @@ export default function RequirementList({ patient, orgId, requirements: initialR
         { title: fullName || 'Patient', path: `/patients/${patient.id}` },
         { title: 'Requirements' },
       ]}
+      actions={
+        <Button variant="contained" onClick={handleAdd} startIcon={<AddIcon />}>
+          Add requirement
+        </Button>
+      }
     >
       <Stack spacing={2} sx={{ width: '100%', mt: 1 }}>
-        <Box sx={{ minHeight: 100, width: '100%' }}>
-          {requirements.length === 0 ? (
-            <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
-              No requirements added yet.
-            </Typography>
-          ) : (
-            <DataGrid
-              rows={requirements}
-              getRowId={(row) => row.id}
-              columns={columns}
-              disableRowSelectionOnClick
-              hideFooter
-              sx={{
-                opacity: isDeleting ? 0.6 : 1,
-                [`& .${gridClasses.columnHeader}, & .${gridClasses.cell}`]: { outline: 'transparent' },
-                [`& .${gridClasses.columnHeader}:focus-within, & .${gridClasses.cell}:focus-within`]: {
-                  outline: 'none',
-                },
-              }}
-            />
-          )}
-        </Box>
-        <Box>
-          <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={handleAdd}>
-            Add Requirement
-          </Button>
+        <Box sx={{ width: '100%', height: 320 }}>
+          <DataGrid
+            rows={requirements}
+            getRowId={(row) => row.id}
+            columns={columns}
+            disableRowSelectionOnClick
+            hideFooter
+            slots={{
+              noRowsOverlay: () => (
+                <Stack sx={{ height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    No requirements added yet.
+                  </Typography>
+                </Stack>
+              ),
+            }}
+            sx={{
+              opacity: isDeleting ? 0.6 : 1,
+              [`& .${gridClasses.columnHeader}, & .${gridClasses.cell}`]: { outline: 'transparent' },
+              [`& .${gridClasses.columnHeader}:focus-within, & .${gridClasses.cell}:focus-within`]: {
+                outline: 'none',
+              },
+            }}
+          />
         </Box>
         <Box>
           <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={handleBackClick}>

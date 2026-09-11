@@ -54,6 +54,38 @@ export type MatchingEffect = 'Required' | 'Preferred' | 'Review Required' | 'Exc
 
 export type VisibilityLevel = 'Operational' | 'Clinical' | 'Restricted'
 
+// ─── Requirement field help text ─────────────────────────────────────────────
+// Rendered as InfoIcon tooltips beside the matching effect / visibility inputs.
+// VISIBILITY_LEVEL_HELP mirrors the RLS policies in 00001_initial_schema.sql
+// ("patient_requirements: read operational rows" / "read clinical and restricted
+// rows") and DATABASE.md §permission matrix.
+
+export const VISIBILITY_LEVEL_HELP: Record<VisibilityLevel, string> = {
+  Operational: 'Readable by anyone with the patients.read_basic permission.',
+  Clinical: 'Readable only by users with the patients.read_clinical permission.',
+  Restricted:
+    'Readable only by users with the patients.read_clinical permission; the underlying detail is held in a separate restricted note (restricted_note_id is a pointer only).',
+}
+
+// TODO(requirement-codes): These five placeholders are temporary. Replace them
+// with the team-confirmed requirement and caregiver skill code lists before the
+// matching engine is enabled.
+export const TEMPORARY_REQUIREMENT_CODES = [
+  { value: 'TEMP-001', label: 'Temporary code 1' },
+  { value: 'TEMP-002', label: 'Temporary code 2' },
+  { value: 'TEMP-003', label: 'Temporary code 3' },
+  { value: 'TEMP-004', label: 'Temporary code 4' },
+  { value: 'TEMP-005', label: 'Temporary code 5' },
+] as const
+
+// TODO(matching-effects): Confirm these descriptions with the operations team.
+export const MATCHING_EFFECT_HELP: Record<MatchingEffect, string> = {
+  Required: 'Caregivers who do not meet this requirement are excluded from matching results.',
+  Preferred: 'Caregivers who meet this requirement score higher, but others are still offered.',
+  'Review Required': 'Matches are still produced, but a scheduler must review them before assigning.',
+  Exclude: 'Caregivers who meet this requirement are excluded from matching results.',
+}
+
 export type PayerType = 'Medicare' | 'Medicaid' | 'Waiver' | 'Managed Care' | 'Private Pay' | 'Other'
 
 export type AuthorizationStatus =
