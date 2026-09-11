@@ -29,6 +29,11 @@ export default async function AuthorizationPage({ params }: AuthorizationPagePro
     return <Typography sx={{ p: 3 }}>Patient not found.</Typography>
   }
 
+  // TODO(phase-6/authorizations): placeholder only. Plan §4.7 / §6 — build the full
+  // patient_authorizations + authorization_services slice (migration 00014 → types →
+  // authorizations.schema.ts → authorizations.service.ts → actions → this page plus
+  // /new and /[authorizationId]/edit → AuthorizationList / AuthorizationForm) and
+  // replace this message. Also unblocks the empty section in PatientCore.
   return (
     <Typography sx={{ p: 3 }}>Authorization management isnt available yet. Check back soon.</Typography>
   )

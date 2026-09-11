@@ -15,7 +15,7 @@ export interface PatientFormState {
     first_name: string
     last_name: string
     middle_name?: string
-    date_of_birth?: string
+    date_of_birth: string
     address_line_1?: string
     address_line_2?: string
     city?: string
@@ -113,9 +113,10 @@ export default function PatientForm({
         onChange={(e) => onDateOfBirthChange(e.target.value)}
         error={!!formState.errors.date_of_birth}
         helperText={formState.errors.date_of_birth}
+        required
         fullWidth
         disabled={isSubmitting}
-        InputLabelProps={{ shrink: true }}
+        slotProps={{ inputLabel: { shrink: true } }}
       />
 
       {showAddress && onAddressFieldChange ? (

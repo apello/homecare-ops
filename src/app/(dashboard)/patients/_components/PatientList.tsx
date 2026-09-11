@@ -26,12 +26,28 @@ import PageContainer from '@/components/templates/crud-dashboard/components/Page
 import type { Patient } from '@/types'
 import { listPatientsAction, archivePatientAction } from '../actions'
 
+type PatientListRow = Patient & {
+  created_by?: {
+    first_name: string | null
+    last_name: string | null
+  } | null
+}
+
 const STATUS_COLOR: Record<string, 'success' | 'warning' | 'default' | 'info'> = {
   Intake: 'info',
   Active: 'success',
   Suspended: 'warning',
   Discharged: 'default',
   Archived: 'warning',
+}
+
+// TODO(patient-statuses): Confirm these operational definitions with the team.
+const STATUS_HELP: Record<string, string> = {
+  Intake: 'UNCONFIRMED — confirm with the operations team. The patient is being onboarded and is not yet receiving active services.',
+  Active: 'UNCONFIRMED — confirm with the operations team. The patient is currently receiving or ready to receive services.',
+  Suspended: 'UNCONFIRMED — confirm with the operations team. The patient’s services are temporarily paused.',
+  Discharged: 'UNCONFIRMED — confirm with the operations team. The patient’s services have ended, but the record remains available.',
+  Archived: 'The patient record is archived and hidden from the default patient list.',
 }
 
 export interface PatientListProps {
@@ -44,7 +60,7 @@ export default function PatientList({ orgId, initialPatients }: PatientListProps
   const dialogs = useDialogs()
   const notifications = useNotifications()
 
-  const [patients, setPatients] = React.useState<Patient[]>(initialPatients)
+  const [patients, setPatients] = React.useState<PatientListRow[]>(initialPatients)
   const [isLoading, setIsLoading] = React.useState(false)
   const [error, setError] = React.useState<Error | null>(null)
 
@@ -121,7 +137,7 @@ export default function PatientList({ orgId, initialPatients }: PatientListProps
     [dialogs, notifications, orgId, loadData],
   )
 
-  const columns = React.useMemo<GridColDef<Patient>[]>(
+  const columns = React.useMemo<GridColDef<PatientListRow>[]>(
     () => [
       {
         field: 'name',
@@ -145,12 +161,14 @@ export default function PatientList({ orgId, initialPatients }: PatientListProps
         headerName: 'Status',
         width: 120,
         renderCell: (params) => (
-          <Chip
-            label={params.value}
-            color={STATUS_COLOR[params.value as string] ?? 'default'}
-            size="small"
-            variant="outlined"
-          />
+          <Tooltip title={STATUS_HELP[params.value as string] ?? ''}>
+            <Chip
+              label={params.value}
+              color={STATUS_COLOR[params.value as string] ?? 'default'}
+              size="small"
+              variant="outlined"
+            />
+          </Tooltip>
         ),
       },
       {
@@ -158,7 +176,7 @@ export default function PatientList({ orgId, initialPatients }: PatientListProps
         headerName: 'Added by',
         width: 130,
         valueGetter: (_value, row) => {
-          const createdBy = (row as any).created_by
+          const createdBy = row.created_by
           if (!createdBy) return '—'
           const name = `${createdBy.first_name} ${createdBy.last_name}`.trim()
           return name || '—'

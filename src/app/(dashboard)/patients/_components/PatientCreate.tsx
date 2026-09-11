@@ -72,6 +72,11 @@ export default function PatientCreate({ orgId }: PatientCreateProps) {
         return
       }
 
+      if (!values.date_of_birth.trim()) {
+        setFormState((prev) => ({ ...prev, errors: { date_of_birth: 'Date of birth is required.' } }))
+        return
+      }
+
       const hasAnyAddressField = Boolean(
         values.address_line_1?.trim() || values.city?.trim() || values.state?.trim() || values.zip_code?.trim(),
       )
@@ -96,7 +101,7 @@ export default function PatientCreate({ orgId }: PatientCreateProps) {
           first_name: values.first_name,
           last_name: values.last_name,
           middle_name: values.middle_name?.trim() ? values.middle_name : undefined,
-          date_of_birth: values.date_of_birth?.trim() ? values.date_of_birth : undefined,
+          date_of_birth: values.date_of_birth,
           address: hasAnyAddressField
             ? {
                 address_type: 'Service' as const,

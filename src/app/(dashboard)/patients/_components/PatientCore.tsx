@@ -1,19 +1,28 @@
 'use client'
 
 import * as React from 'react'
+import AutorenewIcon from '@mui/icons-material/Autorenew'
+import EditIcon from '@mui/icons-material/Edit'
+import RefreshIcon from '@mui/icons-material/Refresh'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Stack from '@mui/material/Stack'
-import Typography from '@mui/material/Typography'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import EditIcon from '@mui/icons-material/Edit'
-import AutorenewIcon from '@mui/icons-material/Autorenew'
-import Divider from '@mui/material/Divider'
 import Card from '@mui/material/Card'
+import CircularProgress from '@mui/material/CircularProgress'
+import Divider from '@mui/material/Divider'
+import IconButton from '@mui/material/IconButton'
+import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
+import Typography from '@mui/material/Typography'
 import { useRouter } from 'next/navigation'
 import PageContainer from '@/components/templates/crud-dashboard/components/PageContainer'
 import type { Patient, PatientAddress, PatientContact, PatientRequirement } from '@/types'
+
+const ACTION_BUTTON_SX = {
+  borderColor: 'divider',
+  '&:hover': {
+    borderColor: 'divider',
+  },
+}
 
 interface InfoSectionProps {
   title: string
@@ -24,18 +33,12 @@ interface InfoSectionProps {
 }
 
 function InfoSection({ title, onEditClick, children, buttonText = 'Edit', tooltipText }: InfoSectionProps) {
-  const isEdit = buttonText === 'Edit'
   const button = (
     <Button
       size="small"
       variant="outlined"
-      sx={{
-        borderColor: 'divider',
-        '&:hover': {
-          borderColor: 'divider',
-        },
-      }}
-      startIcon={isEdit ? <EditIcon /> : <AutorenewIcon />}
+      sx={ACTION_BUTTON_SX}
+      startIcon={buttonText === 'Edit' ? <EditIcon /> : <AutorenewIcon />}
       onClick={onEditClick}
     >
       {buttonText}
@@ -43,14 +46,25 @@ function InfoSection({ title, onEditClick, children, buttonText = 'Edit', toolti
   )
 
   return (
-    <Card sx={{ p: 0, bgcolor: 'background.default', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+    <Card
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        minWidth: 0,
+        bgcolor: 'background.default',
+        borderRadius: 1,
+        border: '1px solid',
+        borderColor: 'divider',
+      }}
+    >
       <Stack
         direction="row"
         sx={{
           justifyContent: 'space-between',
           alignItems: 'center',
-          p: 2,
-          bgcolor: 'action.hover'
+          gap: 1,
+          p: 1.5,
+          bgcolor: 'action.hover',
         }}
       >
         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
@@ -65,10 +79,30 @@ function InfoSection({ title, onEditClick, children, buttonText = 'Edit', toolti
         )}
       </Stack>
       <Divider />
-      <Box sx={{ p: 2 }}>
-        {children}
+      <Box sx={{ flex: 1, px: 1.5 }}>
+        <Stack divider={<Divider flexItem />}>{children}</Stack>
       </Box>
     </Card>
+  )
+}
+
+function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: { xs: '1fr', sm: 'minmax(100px, 0.45fr) minmax(0, 1fr)' },
+        gap: { xs: 0.25, sm: 1.5 },
+        py: 1.25,
+      }}
+    >
+      <Typography variant="body2" color="text.secondary">
+        {label}
+      </Typography>
+      <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
+        {children}
+      </Typography>
+    </Box>
   )
 }
 
@@ -82,11 +116,8 @@ export interface PatientCoreProps {
 
 export default function PatientCore({ patient, addresses, contacts, requirements }: PatientCoreProps) {
   const router = useRouter()
+  const [isRefreshing, startRefresh] = React.useTransition()
   const fullName = [patient.first_name, patient.middle_name, patient.last_name].filter(Boolean).join(' ')
-
-  const handleBackClick = React.useCallback(() => {
-    router.push('/patients')
-  }, [router])
 
   const goTo = React.useCallback(
     (path: string) => () => {
@@ -95,106 +126,117 @@ export default function PatientCore({ patient, addresses, contacts, requirements
     [router, patient.id],
   )
 
+  const handleRefresh = React.useCallback(() => {
+    startRefresh(() => {
+      router.refresh()
+    })
+  }, [router])
+
   return (
     <PageContainer
-      title={fullName || 'Patient'}
+      title="Patient Information"
       breadcrumbs={[
         { title: 'Patients', path: '/patients' },
         { title: fullName || 'Patient' },
       ]}
+      actions={
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+          <Tooltip title="Reload data" placement="right" enterDelay={1000}>
+            <div>
+              <IconButton size="small" aria-label="reload" onClick={handleRefresh} disabled={isRefreshing}>
+                {isRefreshing ? <CircularProgress size={18} color="inherit" /> : <RefreshIcon />}
+              </IconButton>
+            </div>
+          </Tooltip>
+          <Button variant="contained" startIcon={<AutorenewIcon />} onClick={goTo('matching')}>
+            Match Patient
+          </Button>
+        </Stack>
+      }
     >
-      <Stack spacing={2} sx={{ width: '100%', mt: 1 }}>
-        <InfoSection
-          title="Caregiver Assignment"
-          onEditClick={goTo('matching')}
-          buttonText="Match Patient"
-          tooltipText="Match Patient will generate a list of recommended caregivers for this patient"
+      <Stack spacing={2} sx={{ width: '100%' }}>
+        <Typography variant="body2" color="text.secondary">
+          Review and manage demographics, service details, contacts, and matching requirements for {fullName || 'this patient'}.
+        </Typography>
+
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: {
+              xs: 'minmax(0, 1fr)',
+              md: 'repeat(2, minmax(0, 1fr))',
+              xl: 'repeat(3, minmax(0, 1fr))',
+            },
+            gap: 2,
+            alignItems: 'stretch',
+          }}
         >
-          <Typography variant="body2" color="text.secondary">
-            No caregiver for this patient
-          </Typography>
-        </InfoSection>
+          <InfoSection title="Demographics" onEditClick={goTo('edit')}>
+            <InfoRow label="Name">{fullName || '—'}</InfoRow>
+            <InfoRow label="Date of Birth">{patient.date_of_birth ?? '—'}</InfoRow>
+            <InfoRow label="Status">{patient.status}</InfoRow>
+            <InfoRow label="External ID">{patient.patient_external_id ?? '—'}</InfoRow>
+          </InfoSection>
 
-        <InfoSection title="Patient Information" onEditClick={goTo('edit')}>
-          <Typography variant="body2">Name: {fullName || '—'}</Typography>
-          <Typography variant="body2">Date of Birth: {patient.date_of_birth ?? '—'}</Typography>
-          <Typography variant="body2">
-            Status: {patient.status} 
-          </Typography>
-          {patient.patient_external_id ? (
-            <Typography variant="body2">External ID: {patient.patient_external_id}</Typography>
-          ) : null}
-        </InfoSection>
+          <InfoSection title="Caregiver Assignment" onEditClick={goTo('matching')} buttonText="View Matches">
+            <InfoRow label="Assignment">No caregiver assigned.</InfoRow>
+          </InfoSection>
 
-        <InfoSection title="Addresses" onEditClick={goTo('address')}>
-          {addresses.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              No addresses added yet.
-            </Typography>
-          ) : (
-            <Stack spacing={0.5}>
-              {addresses.map((address) => {
-                const parts = [address.address_line_1]
-                if (address.address_line_2) parts.push(address.address_line_2)
-                if (address.city) parts.push(address.city)
-                if (address.state) parts.push(address.state)
-                if (address.zip_code) parts.push(address.zip_code)
+          <InfoSection title="Addresses" onEditClick={goTo('address')}>
+            {addresses.length === 0 ? (
+              <InfoRow label="Address">No addresses added yet.</InfoRow>
+            ) : (
+              addresses.map((address) => {
+                const parts = [
+                  address.address_line_1,
+                  address.address_line_2,
+                  address.city,
+                  address.state,
+                  address.zip_code,
+                ].filter(Boolean)
                 return (
-                  <Typography variant="body2" key={address.id}>
-                    {address.address_type}: {parts.join(', ')}
-                  </Typography>
+                  <InfoRow label={address.address_type} key={address.id}>
+                    {parts.join(', ')}
+                  </InfoRow>
                 )
-              })}
-            </Stack>
-          )}
-        </InfoSection>
+              })
+            )}
+          </InfoSection>
 
-        <InfoSection title="Emergency Contact" onEditClick={goTo('contact')}>
-          {contacts.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              No contact information on file.
-            </Typography>
-          ) : (
-            <Stack spacing={0.5}>
-              {contacts.map((contact) => {
+          <InfoSection title="Emergency Contacts" onEditClick={goTo('contact')}>
+            {contacts.length === 0 ? (
+              <InfoRow label="Contact">No contact information on file.</InfoRow>
+            ) : (
+              contacts.map((contact) => {
                 const details = [contact.relationship, contact.phone, contact.email].filter(Boolean).join(' · ')
                 return (
-                  <Typography variant="body2" key={contact.id}>
-                    {contact.contact_type}: {contact.contact_name}
+                  <InfoRow label={contact.contact_type} key={contact.id}>
+                    {contact.contact_name}
                     {details ? ` (${details})` : ''}
-                  </Typography>
+                  </InfoRow>
                 )
-              })}
-            </Stack>
-          )}
-        </InfoSection>
+              })
+            )}
+          </InfoSection>
 
-        <InfoSection title="Patient Authorization" onEditClick={goTo('authorization')}>
-          <Typography variant="body2" color="text.secondary">
-            No authorization information on file.
-          </Typography>
-        </InfoSection>
+          {/* TODO(phase-6/authorizations): hardcoded empty state. Plan §4.7 / §6 —
+              pass authorizations from the detail page and render payer / status /
+              authorization number after the authorization slice is implemented. */}
+          <InfoSection title="Patient Authorization" onEditClick={goTo('authorization')}>
+            <InfoRow label="Authorization">No authorization information on file.</InfoRow>
+          </InfoSection>
 
-        <InfoSection title="Requirements" onEditClick={goTo('requirement')}>
-          {requirements.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              No requirements added yet.
-            </Typography>
-          ) : (
-            <Stack spacing={0.5}>
-              {requirements.map((requirement) => (
-                <Typography variant="body2" key={requirement.id}>
-                  {requirement.requirement_type}: {requirement.requirement_code} ({requirement.matching_effect})
-                </Typography>
-              ))}
-            </Stack>
-          )}
-        </InfoSection>
-
-        <Box>
-          <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={handleBackClick}>
-            Back
-          </Button>
+          <InfoSection title="Requirements" onEditClick={goTo('requirement')}>
+            {requirements.length === 0 ? (
+              <InfoRow label="Requirement">No requirements added yet.</InfoRow>
+            ) : (
+              requirements.map((requirement) => (
+                <InfoRow label={requirement.requirement_type} key={requirement.id}>
+                  {requirement.requirement_code} ({requirement.matching_effect})
+                </InfoRow>
+              ))
+            )}
+          </InfoSection>
         </Box>
       </Stack>
     </PageContainer>

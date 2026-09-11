@@ -25,7 +25,7 @@ function PatientEditForm({ patient, orgId }: PatientEditFormProps) {
       first_name: patient.first_name,
       last_name: patient.last_name,
       middle_name: patient.middle_name ?? undefined,
-      date_of_birth: patient.date_of_birth ?? undefined,
+      date_of_birth: patient.date_of_birth ?? '',
     }),
     [patient],
   )
@@ -78,6 +78,11 @@ function PatientEditForm({ patient, orgId }: PatientEditFormProps) {
 
       if (!values.last_name?.trim()) {
         setFormState((prev) => ({ ...prev, errors: { last_name: 'Last name is required.' } }))
+        return
+      }
+
+      if (!values.date_of_birth.trim()) {
+        setFormState((prev) => ({ ...prev, errors: { date_of_birth: 'Date of birth is required.' } }))
         return
       }
 

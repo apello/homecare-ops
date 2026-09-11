@@ -30,6 +30,6 @@ export default async function MatchingPage({ params }: MatchingPageProps) {
   }
 
   return (
-    <Typography sx={{ p: 3 }}>Caregiver matching isn't available yet. Check back soon</Typography>
+    <Typography sx={{ p: 3 }}>Caregiver matching isn&apos;t available yet. Check back soon</Typography>
   )
 }
