@@ -10,8 +10,10 @@ import FormControl from '@mui/material/FormControl'
 import InputLabel from '@mui/material/InputLabel'
 import Select from '@mui/material/Select'
 import MenuItem from '@mui/material/MenuItem'
+import Typography from '@mui/material/Typography'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { useRouter } from 'next/navigation'
+import { useDialogs } from '@/components/templates/crud-dashboard/hooks/useDialogs/useDialogs'
 import useNotifications from '@/components/templates/crud-dashboard/hooks/useNotifications/useNotifications'
 import PageContainer from '@/components/templates/crud-dashboard/components/PageContainer'
 import type { AddressType, Patient, PatientAddress } from '@/types'
@@ -32,10 +34,17 @@ export interface PatientAddressFormProps {
   patient: Patient
   orgId: string
   address?: PatientAddress
+  existingAddressTypes?: AddressType[]
 }
 
-export default function PatientAddressForm({ patient, orgId, address }: PatientAddressFormProps) {
+export default function PatientAddressForm({
+  patient,
+  orgId,
+  address,
+  existingAddressTypes = [],
+}: PatientAddressFormProps) {
   const router = useRouter()
+  const dialogs = useDialogs()
   const notifications = useNotifications()
   const isEditing = !!address
   const fullName = [patient.first_name, patient.middle_name, patient.last_name].filter(Boolean).join(' ')
@@ -108,6 +117,14 @@ export default function PatientAddressForm({ patient, orgId, address }: PatientA
         return
       }
 
+      if (!isEditing && existingAddressTypes.includes(values.address_type)) {
+        const confirmed = await dialogs.confirm(
+          `This patient already has an active ${values.address_type.toLowerCase()} address. Adding this address will replace the existing one.`,
+          { title: 'Replace existing address?', severity: 'warning', okText: 'Replace Address' },
+        )
+        if (!confirmed) return
+      }
+
       setIsSubmitting(true)
 
       try {
@@ -141,7 +158,7 @@ export default function PatientAddressForm({ patient, orgId, address }: PatientA
         setIsSubmitting(false)
       }
     },
-    [values, orgId, patient.id, isEditing, notifications, router],
+    [values, orgId, patient.id, isEditing, existingAddressTypes, dialogs, notifications, router],
   )
 
   return (
@@ -153,10 +170,15 @@ export default function PatientAddressForm({ patient, orgId, address }: PatientA
         { title: isEditing ? 'Edit Address' : 'Add Address' },
       ]}
     >
+      {!isEditing ? (
+        <Typography component="p" variant="body2" color="text.secondary" sx={{ mt: -1, mb: 4 }}>
+          Only one active address of each type is kept. Adding an address of an existing type will replace the current address.
+        </Typography>
+      ) : null}
       <Box
         component="form"
         onSubmit={handleSubmit}
-        sx={{ display: 'flex', flexDirection: 'column', gap: 3, width: '100%', mt: 1 }}
+        sx={{ display: 'flex', flexDirection: 'column', gap: 3, width: '100%' }}
       >
         <FormControl fullWidth disabled={isSubmitting}>
           <InputLabel id="address-type-label">Address Type</InputLabel>

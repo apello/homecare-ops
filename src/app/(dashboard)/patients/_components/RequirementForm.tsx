@@ -93,7 +93,7 @@ export default function RequirementForm({ patient, orgId, requirement }: Require
   )
 
   const handleBackClick = React.useCallback(() => {
-    router.push(`/patients/${patient.id}`)
+    router.push(`/patients/${patient.id}/requirement`)
   }, [router, patient.id])
 
   const handleSubmit = React.useCallback(
