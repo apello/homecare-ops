@@ -1,8 +1,13 @@
 import { createClient } from '@/lib/db/client'
+import { MAX_PATIENT_CONTACTS } from '@/lib/schemas/patients.schema'
 import type {
   Patient,
   PatientAddress,
+  PatientContact,
   PatientRequirement,
+  PatientStatus,
+  RequirementType,
+  MatchingEffect,
   VisibilityLevel,
 } from '@/types'
 
@@ -23,9 +28,9 @@ type PatientAddressInput = {
 }
 
 type PatientRequirementInput = {
-  requirement_type: string
+  requirement_type: RequirementType
   requirement_code: string
-  matching_effect: 'Required' | 'Preferred' | 'Review Required' | 'Exclude'
+  matching_effect: MatchingEffect
   required_skill_code?: string | null
   structured_value?: Record<string, unknown> | null
   restricted_note_id?: string | null
@@ -34,9 +39,18 @@ type PatientRequirementInput = {
   effective_end_date?: string | null
 }
 
+type PatientContactInput = {
+  contact_type: string
+  contact_name: string
+  relationship?: string | null
+  phone?: string | null
+  email?: string | null
+  authorized_contact?: boolean
+}
+
 export async function listPatients(
   orgId: string,
-  filters?: { status?: string },
+  filters?: { status?: PatientStatus },
 ): Promise<PatientWithDates[]> {
   const supabase = await createClient()
 
@@ -54,6 +68,10 @@ export async function listPatients(
 
   if (filters?.status) {
     query = query.eq('status', filters.status)
+  }
+
+  if (filters?.status !== 'Archived') {
+    query = query.is('archived_at', null)
   }
 
   const { data, error } = await query.order('created_at', { ascending: false })
@@ -105,7 +123,7 @@ export async function createPatient(
     first_name: data.first_name,
     last_name: data.last_name,
     middle_name: data.middle_name ?? null,
-    date_of_birth: data.date_of_birth ? new Date(data.date_of_birth).toISOString().split('T')[0] : null,
+    date_of_birth: data.date_of_birth ?? null,
     patient_external_id: data.patient_external_id ?? null,
     status: data.status ?? 'Intake',
     address_line_1: data.address?.address_line_1 ?? null,
@@ -115,7 +133,7 @@ export async function createPatient(
     zip_code: data.address?.zip_code ?? null,
     latitude: data.address?.latitude ?? null,
     longitude: data.address?.longitude ?? null,
-  } as never)
+  })
 
   const { data: patientData, error: patientError } = result
 
@@ -124,7 +142,7 @@ export async function createPatient(
     throw new Error(patientError.message)
   }
 
-  return (patientData as unknown) as PatientWithDates
+  return patientData as PatientWithDates
 }
 
 export async function updatePatient(
@@ -276,7 +294,7 @@ export async function listPatientRequirements(
       target_org_id: orgId,
       target_patient_id: patientId,
       target_visibility: visibilityLevel,
-    } as never)
+    })
 
     const { data, error } = result
 
@@ -285,7 +303,7 @@ export async function listPatientRequirements(
       return []
     }
 
-    return ((data ?? []) as unknown) as PatientRequirement[]
+    return (data ?? []) as PatientRequirement[]
   }
 
   // For no visibility filter, return all active requirements
@@ -326,7 +344,7 @@ export async function upsertPatientRequirement(
     visibility_level: data.visibility_level,
     effective_start_date: data.effective_start_date,
     effective_end_date: data.effective_end_date ?? null,
-  } as never)
+  })
 
   const { data: resultData, error } = result
 
@@ -335,7 +353,7 @@ export async function upsertPatientRequirement(
     throw new Error(error.message)
   }
 
-  return (resultData as unknown) as PatientRequirement
+  return resultData as PatientRequirement
 }
 
 export async function deactivatePatientRequirement(
@@ -354,6 +372,120 @@ export async function deactivatePatientRequirement(
 
   if (error) {
     console.error('[deactivatePatientRequirement] update failed:', { orgId, patientId, requirementId, error })
+    throw new Error(error.message)
+  }
+}
+
+// ─── Patient Contacts ─────────────────────────────────────────────────────────
+
+export async function listPatientContacts(
+  orgId: string,
+  patientId: string,
+): Promise<PatientContact[]> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('patient_contacts')
+    .select('*')
+    .eq('organization_id', orgId)
+    .eq('patient_id', patientId)
+    .eq('active', true)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('[listPatientContacts] query failed:', { orgId, patientId, error })
+    return []
+  }
+
+  return (data ?? []) as PatientContact[]
+}
+
+export async function upsertPatientContact(
+  orgId: string,
+  patientId: string,
+  contactId: string | undefined,
+  data: PatientContactInput,
+): Promise<PatientContact> {
+  const supabase = await createClient()
+
+  const payload = {
+    contact_type: data.contact_type,
+    contact_name: data.contact_name,
+    relationship: data.relationship ?? null,
+    phone: data.phone ?? null,
+    email: data.email ?? null,
+    authorized_contact: data.authorized_contact ?? false,
+  }
+
+  if (contactId) {
+    const { data: updated, error } = await supabase
+      .from('patient_contacts')
+      .update(payload as never)
+      .eq('id', contactId)
+      .eq('organization_id', orgId)
+      .eq('patient_id', patientId)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('[upsertPatientContact] update failed:', { orgId, patientId, contactId, error })
+      throw new Error(error.message)
+    }
+
+    return updated as PatientContact
+  }
+
+  const { count, error: countError } = await supabase
+    .from('patient_contacts')
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', orgId)
+    .eq('patient_id', patientId)
+    .eq('active', true)
+
+  if (countError) {
+    console.error('[upsertPatientContact] count failed:', { orgId, patientId, error: countError })
+    throw new Error(countError.message)
+  }
+
+  if ((count ?? 0) >= MAX_PATIENT_CONTACTS) {
+    throw new Error(`A patient can have at most ${MAX_PATIENT_CONTACTS} contacts.`)
+  }
+
+  const { data: inserted, error } = await supabase
+    .from('patient_contacts')
+    .insert({
+      organization_id: orgId,
+      patient_id: patientId,
+      ...payload,
+      active: true,
+    } as never)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('[upsertPatientContact] insert failed:', { orgId, patientId, error })
+    throw new Error(error.message)
+  }
+
+  return inserted as PatientContact
+}
+
+export async function deactivatePatientContact(
+  orgId: string,
+  patientId: string,
+  contactId: string,
+): Promise<void> {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('patient_contacts')
+    .update({ active: false, archived_at: new Date().toISOString() } as never)
+    .eq('id', contactId)
+    .eq('organization_id', orgId)
+    .eq('patient_id', patientId)
+
+  if (error) {
+    console.error('[deactivatePatientContact] update failed:', { orgId, patientId, contactId, error })
     throw new Error(error.message)
   }
 }

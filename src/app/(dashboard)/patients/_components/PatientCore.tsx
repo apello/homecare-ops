@@ -13,7 +13,7 @@ import Card from '@mui/material/Card'
 import Tooltip from '@mui/material/Tooltip'
 import { useRouter } from 'next/navigation'
 import PageContainer from '@/components/templates/crud-dashboard/components/PageContainer'
-import type { Patient, PatientAddress, PatientRequirement } from '@/types'
+import type { Patient, PatientAddress, PatientContact, PatientRequirement } from '@/types'
 
 interface InfoSectionProps {
   title: string
@@ -76,10 +76,11 @@ export interface PatientCoreProps {
   patient: Patient
   orgId: string
   addresses: PatientAddress[]
+  contacts: PatientContact[]
   requirements: PatientRequirement[]
 }
 
-export default function PatientCore({ patient, addresses, requirements }: PatientCoreProps) {
+export default function PatientCore({ patient, addresses, contacts, requirements }: PatientCoreProps) {
   const router = useRouter()
   const fullName = [patient.first_name, patient.middle_name, patient.last_name].filter(Boolean).join(' ')
 
@@ -149,9 +150,23 @@ export default function PatientCore({ patient, addresses, requirements }: Patien
         </InfoSection>
 
         <InfoSection title="Emergency Contact" onEditClick={goTo('contact')}>
-          <Typography variant="body2" color="text.secondary">
-            No contact information on file.
-          </Typography>
+          {contacts.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No contact information on file.
+            </Typography>
+          ) : (
+            <Stack spacing={0.5}>
+              {contacts.map((contact) => {
+                const details = [contact.relationship, contact.phone, contact.email].filter(Boolean).join(' · ')
+                return (
+                  <Typography variant="body2" key={contact.id}>
+                    {contact.contact_type}: {contact.contact_name}
+                    {details ? ` (${details})` : ''}
+                  </Typography>
+                )
+              })}
+            </Stack>
+          )}
         </InfoSection>
 
         <InfoSection title="Patient Authorization" onEditClick={goTo('authorization')}>

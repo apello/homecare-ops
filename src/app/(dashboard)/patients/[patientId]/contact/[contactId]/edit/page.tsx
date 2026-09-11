@@ -3,16 +3,17 @@ import Typography from '@mui/material/Typography'
 import { requireAuth, getActiveMembership } from '@/lib/auth/server'
 import { hasPermission } from '@/lib/permissions'
 import UnauthorizedMessage from '@/components/UnauthorizedMessage'
-import { getPatientAction, listPatientContactsAction } from '../../actions'
-import ContactList from '../../_components/ContactList'
+import { getPatientAction, listPatientContactsAction } from '../../../../actions'
+import ContactForm from '../../../../_components/ContactForm'
 
-interface ContactPageProps {
+interface ContactEditPageProps {
   params: Promise<{
     patientId: string
+    contactId: string
   }>
 }
 
-export default async function ContactPage({ params }: ContactPageProps) {
+export default async function ContactEditPage({ params }: ContactEditPageProps) {
   await requireAuth()
   const membership = await getActiveMembership()
   if (!membership) redirect('/login')
@@ -36,11 +37,13 @@ export default async function ContactPage({ params }: ContactPageProps) {
     return <Typography sx={{ p: 3 }}>Patient not found.</Typography>
   }
 
-  return (
-    <ContactList
-      patient={patient}
-      orgId={orgId}
-      contacts={contactsResult.success ? contactsResult.data ?? [] : []}
-    />
+  const contact = (contactsResult.success ? contactsResult.data ?? [] : []).find(
+    (item) => item.id === resolvedParams.contactId,
   )
+
+  if (!contact) {
+    return <Typography sx={{ p: 3 }}>Contact not found.</Typography>
+  }
+
+  return <ContactForm patient={patient} orgId={orgId} contact={contact} />
 }

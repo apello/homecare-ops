@@ -200,8 +200,8 @@ export type Organization = {
 
 export type UserProfile = {
   id: string
-  first_name: string
-  last_name: string
+  first_name: string | null
+  last_name: string | null
   phone: string | null
   access_status: UserAccessStatus
   last_login_at: string | null
@@ -744,7 +744,7 @@ export type OperationalHistoryEvent = {
 
 // ─── Supabase Database type ───────────────────────────────────────────────────
 
-type TableDef<T> = { Row: T; Insert: Partial<T>; Update: Partial<T> }
+type TableDef<T> = { Row: T; Insert: Partial<T>; Update: Partial<T>; Relationships: [] }
 
 export type Database = {
   public: {
@@ -799,6 +799,48 @@ export type Database = {
       suspend_org_member:    { Args: { target_org_id: string; target_user_id: string };                        Returns: OrganizationMembership }
       unsuspend_org_member:  { Args: { target_org_id: string; target_user_id: string };                        Returns: OrganizationMembership }
       set_org_member_roles:  { Args: { target_org_id: string; target_user_id: string; new_roles: OrgRole[] };  Returns: OrganizationMembership }
+      revoke_org_member:     { Args: { target_org_id: string; target_user_id: string };                        Returns: OrganizationMembership }
+      create_patient_with_address: {
+        Args: {
+          target_org_id: string
+          first_name: string
+          last_name: string
+          middle_name?: string | null
+          date_of_birth?: string | null
+          patient_external_id?: string | null
+          status?: string
+          address_line_1?: string | null
+          address_line_2?: string | null
+          city?: string | null
+          state?: string | null
+          zip_code?: string | null
+          latitude?: number | null
+          longitude?: number | null
+        }
+        Returns: Patient
+      }
+      upsert_patient_requirement: {
+        Args: {
+          target_org_id: string
+          target_patient_id: string
+          req_type: RequirementType
+          req_code: string
+          matching_effect: MatchingEffect
+          required_skill_code?: string | null
+          structured_value?: Record<string, unknown> | null
+          restricted_note_id?: string | null
+          visibility_level: VisibilityLevel
+          effective_start_date: string
+          effective_end_date?: string | null
+        }
+        Returns: PatientRequirement
+      }
+      list_patient_requirements_by_visibility: {
+        Args: { target_org_id: string; target_patient_id: string; target_visibility?: VisibilityLevel }
+        Returns: PatientRequirement[]
+      }
     }
+    Enums: Record<string, never>
+    CompositeTypes: Record<string, never>
   }
 }

@@ -6,6 +6,7 @@ import UnauthorizedMessage from '@/components/UnauthorizedMessage'
 import {
   getPatientAction,
   listPatientAddressesAction,
+  listPatientContactsAction,
   listPatientRequirementsAction,
 } from '../actions'
 import PatientCore from '../_components/PatientCore'
@@ -29,10 +30,14 @@ export default async function PatientPage({ params }: PatientPageProps) {
   const resolvedParams = await params
   const orgId = membership.organization_id
 
-  const [patientResult, addressesResult, requirementsResult] = await Promise.all([
+  const canReadClinical = await hasPermission(orgId, 'patients.read_clinical')
+  const visibilityLevel = canReadClinical ? 'Clinical' : 'Operational'
+
+  const [patientResult, addressesResult, contactsResult, requirementsResult] = await Promise.all([
     getPatientAction(orgId, resolvedParams.patientId),
     listPatientAddressesAction(orgId, resolvedParams.patientId),
-    listPatientRequirementsAction(orgId, resolvedParams.patientId),
+    listPatientContactsAction(orgId, resolvedParams.patientId),
+    listPatientRequirementsAction(orgId, resolvedParams.patientId, visibilityLevel),
   ])
 
   const patient = patientResult.success ? patientResult.data ?? null : null
@@ -46,6 +51,7 @@ export default async function PatientPage({ params }: PatientPageProps) {
       patient={patient}
       orgId={orgId}
       addresses={addressesResult.success ? addressesResult.data ?? [] : []}
+      contacts={contactsResult.success ? contactsResult.data ?? [] : []}
       requirements={requirementsResult.success ? requirementsResult.data ?? [] : []}
     />
   )

@@ -9,6 +9,8 @@ import {
   PatientRequirementSchema,
   ArchivePatientSchema,
   UpsertPatientAddressSchema,
+  UpsertPatientContactSchema,
+  DeactivatePatientContactSchema,
 } from '@/lib/schemas/patients.schema'
 import * as patientsService from '@/lib/services/patients.service'
 import type {
@@ -16,13 +18,15 @@ import type {
   Patient,
   PatientRequirement,
   PatientAddress,
+  PatientContact,
+  PatientStatus,
 } from '@/types'
 
 // ─── List Patients ────────────────────────────────────────────────────────────
 
 export async function listPatientsAction(
   orgId: string,
-  filters?: { status?: string },
+  filters?: { status?: PatientStatus },
 ): Promise<ActionResponse<Patient[]>> {
   try {
     await requireAuth()
@@ -269,6 +273,79 @@ export async function deactivatePatientRequirementAction(input: {
     return { success: true }
   } catch (err) {
     console.error('[deactivatePatientRequirementAction] failed:', { input, error: err })
+    return { success: false, error: err instanceof Error ? err.message : 'Unable to complete this action.' }
+  }
+}
+
+// ─── List Patient Contacts ────────────────────────────────────────────────────
+
+export async function listPatientContactsAction(
+  orgId: string,
+  patientId: string,
+): Promise<ActionResponse<PatientContact[]>> {
+  try {
+    await requireAuth()
+    await requirePermission(orgId, 'patients.read_basic')
+    const data = await patientsService.listPatientContacts(orgId, patientId)
+    return { success: true, data }
+  } catch (err) {
+    console.error('[listPatientContactsAction] failed:', { orgId, patientId, error: err })
+    return { success: false, error: 'Not authorized.' }
+  }
+}
+
+// ─── Upsert Patient Contact ───────────────────────────────────────────────────
+
+export async function upsertPatientContactAction(input: unknown): Promise<ActionResponse<PatientContact>> {
+  try {
+    await requireAuth()
+    const parsed = UpsertPatientContactSchema.safeParse(input)
+    if (!parsed.success) {
+      console.error('[upsertPatientContactAction] validation failed:', parsed.error.flatten())
+      return { success: false, fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]> }
+    }
+    await requirePermission(parsed.data.organizationId, 'patients.manage')
+    const data = await patientsService.upsertPatientContact(
+      parsed.data.organizationId,
+      parsed.data.patientId,
+      parsed.data.contactId,
+      {
+        contact_type: parsed.data.contact_type,
+        contact_name: parsed.data.contact_name,
+        relationship: parsed.data.relationship,
+        phone: parsed.data.phone,
+        email: parsed.data.email,
+        authorized_contact: parsed.data.authorized_contact,
+      },
+    )
+    revalidatePath(`/patients/${parsed.data.patientId}`)
+    return { success: true, data }
+  } catch (err) {
+    console.error('[upsertPatientContactAction] failed:', { error: err })
+    return { success: false, error: err instanceof Error ? err.message : 'Unable to complete this action.' }
+  }
+}
+
+// ─── Deactivate Patient Contact ───────────────────────────────────────────────
+
+export async function deactivatePatientContactAction(input: unknown): Promise<ActionResponse> {
+  try {
+    await requireAuth()
+    const parsed = DeactivatePatientContactSchema.safeParse(input)
+    if (!parsed.success) {
+      console.error('[deactivatePatientContactAction] validation failed:', parsed.error.flatten())
+      return { success: false, fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]> }
+    }
+    await requirePermission(parsed.data.organizationId, 'patients.manage')
+    await patientsService.deactivatePatientContact(
+      parsed.data.organizationId,
+      parsed.data.patientId,
+      parsed.data.contactId,
+    )
+    revalidatePath(`/patients/${parsed.data.patientId}`)
+    return { success: true }
+  } catch (err) {
+    console.error('[deactivatePatientContactAction] failed:', { error: err })
     return { success: false, error: err instanceof Error ? err.message : 'Unable to complete this action.' }
   }
 }

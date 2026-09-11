@@ -15,6 +15,36 @@ const requirementTypeEnum = z.enum([
 const matchingEffectEnum = z.enum(['Required', 'Preferred', 'Review Required', 'Exclude'] as const)
 const visibilityLevelEnum = z.enum(['Operational', 'Clinical', 'Restricted'] as const)
 const addressTypeEnum = z.enum(['Service', 'Mailing', 'Other'] as const)
+// TODO: Find out whether there is an official list of contact types needed
+const contactTypeEnum = z.enum([
+  'Emergency',
+  'Primary',
+  'Secondary',
+  'Guardian',
+  'Power of Attorney',
+  'Other',
+] as const)
+const contactRelationshipEnum = z.enum([
+  'Spouse',
+  'Partner',
+  'Parent',
+  'Child',
+  'Sibling',
+  'Grandparent',
+  'Grandchild',
+  'Other Relative',
+  'Friend',
+  'Neighbor',
+  'Legal Guardian',
+  'Case Manager',
+  'Other',
+] as const)
+
+export const CONTACT_TYPES = contactTypeEnum.options
+export const CONTACT_RELATIONSHIPS = contactRelationshipEnum.options
+
+// Business rule: a patient may have at most 5 active contacts on file
+export const MAX_PATIENT_CONTACTS = 5
 
 const uuidShape = z.string().regex(
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
@@ -68,6 +98,9 @@ export const UpdatePatientSchema = z.object({
 }).strict().refine(
   (obj) => Object.keys(obj).length > 2, // At least organizationId, patientId, and one other field
   'At least one field must be updated',
+).refine(
+  (obj) => obj.status !== 'Archived',
+  'Use the archive action to archive a patient',
 )
 
 export type UpdatePatientInput = z.infer<typeof UpdatePatientSchema>
@@ -138,3 +171,27 @@ export const UpsertPatientAddressSchema = z.object({
 }).strict()
 
 export type UpsertPatientAddressInput = z.infer<typeof UpsertPatientAddressSchema>
+
+// ─── Patient Contact ──────────────────────────────────────────────────────────
+
+export const UpsertPatientContactSchema = z.object({
+  organizationId: uuidShape,
+  patientId: uuidShape,
+  contactId: uuidShape.optional(),
+  contact_type: contactTypeEnum,
+  contact_name: z.string().min(1, 'Contact name is required'),
+  relationship: contactRelationshipEnum.nullable().optional(),
+  phone: z.string().nullable().optional(),
+  email: z.string().email('Invalid email address').nullable().optional(),
+  authorized_contact: z.boolean().optional(),
+}).strict()
+
+export type UpsertPatientContactInput = z.infer<typeof UpsertPatientContactSchema>
+
+export const DeactivatePatientContactSchema = z.object({
+  organizationId: uuidShape,
+  patientId: uuidShape,
+  contactId: uuidShape,
+}).strict()
+
+export type DeactivatePatientContactInput = z.infer<typeof DeactivatePatientContactSchema>

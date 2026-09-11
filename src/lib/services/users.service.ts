@@ -29,7 +29,7 @@ export async function getMember(orgId: string, membershipId: string): Promise<Or
     console.error('[getMember] lookup failed:', { orgId, membershipId, error })
     return null
   }
-  return data as OrgMemberWithProfile
+  return data as unknown as OrgMemberWithProfile
 }
 
 export async function listOrgMembers(orgId: string): Promise<OrgMemberWithProfile[]> {
@@ -54,7 +54,7 @@ export async function listOrgMembers(orgId: string): Promise<OrgMemberWithProfil
     return []
   }
 
-  return (data as OrgMemberWithProfile[]).filter(m => m.profile?.access_status !== 'Pending')
+  return (data as unknown as OrgMemberWithProfile[]).filter(m => m.profile?.access_status !== 'Pending')
 }
 
 export async function inviteUser(orgId: string, email: string, roles: OrgRole[]): Promise<void> {
