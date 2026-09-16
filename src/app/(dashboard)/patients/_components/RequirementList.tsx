@@ -9,8 +9,6 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
-import InfoIcon from '@mui/icons-material/Info'
-import Tooltip from '@mui/material/Tooltip'
 import {
   DataGrid,
   GridActionsCellItem,
@@ -21,20 +19,9 @@ import { useRouter } from 'next/navigation'
 import { useDialogs } from '@/components/templates/crud-dashboard/hooks/useDialogs/useDialogs'
 import useNotifications from '@/components/templates/crud-dashboard/hooks/useNotifications/useNotifications'
 import PageContainer from '@/components/templates/crud-dashboard/components/PageContainer'
-import { MATCHING_EFFECT_HELP, VISIBILITY_LEVEL_HELP } from '@/types'
-import type { MatchingEffect, Patient, PatientRequirement, VisibilityLevel } from '@/types'
+import { getPatientRequirementDisplayValue } from '@/lib/schemas/patients.schema'
+import type { Patient, PatientRequirement } from '@/types'
 import { deactivatePatientRequirementAction } from '../actions'
-
-function HeaderWithHelp({ label, help }: { label: string; help: string }) {
-  return (
-    <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-      <span>{label}</span>
-      <Tooltip title={help}>
-        <InfoIcon fontSize="inherit" color="action" sx={{ display: 'block' }} />
-      </Tooltip>
-    </Stack>
-  )
-}
 
 function requirementColumns(
   onRequirementEdit: (requirement: PatientRequirement) => void,
@@ -49,48 +36,27 @@ function requirementColumns(
       minWidth: 120,
     },
     {
-      field: 'requirement_code',
-      headerName: 'Code',
+      field: 'details',
+      headerName: 'Preference / Need',
+      flex: 2,
+      minWidth: 220,
+      valueGetter: (_value, row) => getPatientRequirementDisplayValue(row),
+    },
+    {
+      field: 'effective_start_date',
+      headerName: 'Start Date',
+      type: 'date',
       flex: 1,
       minWidth: 120,
+      valueGetter: (value) => value ? new Date(`${value}T00:00:00`) : null,
     },
     {
-      field: 'matching_effect',
-      headerName: 'Matching Effect',
+      field: 'effective_end_date',
+      headerName: 'End Date',
+      type: 'date',
       flex: 1,
-      minWidth: 150,
-      renderHeader: () => (
-        <HeaderWithHelp
-          label="Matching Effect"
-          help="UNCONFIRMED — confirm with the operations team. Required excludes caregivers who do not meet it; Preferred raises matching score without excluding; Review Required requires scheduler review; Exclude removes caregivers who meet it."
-        />
-      ),
-      renderCell: (params) => (
-        <Tooltip
-          title={`UNCONFIRMED — confirm with the operations team. ${
-            MATCHING_EFFECT_HELP[params.value as MatchingEffect] ?? ''
-          }`}
-        >
-          <span>{params.value as string}</span>
-        </Tooltip>
-      ),
-    },
-    {
-      field: 'visibility_level',
-      headerName: 'Visibility',
-      flex: 1,
-      minWidth: 140,
-      renderHeader: () => (
-        <HeaderWithHelp
-          label="Visibility"
-          help="Controls who can read this requirement: Operational rows need patients.read_basic; Clinical and Restricted rows need patients.read_clinical."
-        />
-      ),
-      renderCell: (params) => (
-        <Tooltip title={VISIBILITY_LEVEL_HELP[params.value as VisibilityLevel] ?? ''}>
-          <span>{params.value as string}</span>
-        </Tooltip>
-      ),
+      minWidth: 120,
+      valueGetter: (value) => value ? new Date(`${value}T00:00:00`) : null,
     },
     {
       field: 'actions',
@@ -149,7 +115,7 @@ export default function RequirementList({ patient, orgId, requirements: initialR
   const handleDelete = React.useCallback(
     async (requirement: PatientRequirement) => {
       const confirmed = await dialogs.confirm(
-        `Remove the ${requirement.requirement_type} requirement (${requirement.requirement_code})?`,
+        `Remove the ${requirement.requirement_type.toLowerCase()} preference "${getPatientRequirementDisplayValue(requirement)}"?`,
         { title: 'Remove requirement?', severity: 'warning', okText: 'Remove' },
       )
       if (!confirmed) return

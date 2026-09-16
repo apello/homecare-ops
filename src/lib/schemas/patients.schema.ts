@@ -1,17 +1,8 @@
 import { z } from 'zod'
+import type { PatientRequirement } from '@/types'
 
 const patientStatusEnum = z.enum(['Intake', 'Active', 'Suspended', 'Discharged', 'Archived'] as const)
-const requirementTypeEnum = z.enum([
-  'Skill',
-  'Language',
-  'Gender Preference',
-  'Travel',
-  'Pets',
-  'Smoking',
-  'Lifting',
-  'Schedule',
-  'Other',
-] as const)
+const patientRequirementTypeEnum = z.enum(['Language', 'Gender Preference', 'Lifting'] as const)
 const matchingEffectEnum = z.enum(['Required', 'Preferred', 'Review Required', 'Exclude'] as const)
 const visibilityLevelEnum = z.enum(['Operational', 'Clinical', 'Restricted'] as const)
 const addressTypeEnum = z.enum(['Service', 'Mailing', 'Other'] as const)
@@ -42,6 +33,23 @@ const contactRelationshipEnum = z.enum([
 
 export const CONTACT_TYPES = contactTypeEnum.options
 export const CONTACT_RELATIONSHIPS = contactRelationshipEnum.options
+export const PATIENT_REQUIREMENT_TYPES = patientRequirementTypeEnum.options
+export const COMMON_LANGUAGES = [
+  'English',
+  'Spanish',
+  'Arabic',
+  'French',
+  'Mandarin Chinese',
+  'Cantonese',
+  'Vietnamese',
+  'Korean',
+  'Tagalog',
+  'Haitian Creole',
+  'Russian',
+  'Portuguese',
+  'Other',
+] as const
+export const PATIENT_LIFTING_THRESHOLDS = [150, 200, 250] as const
 
 export const MAX_PATIENT_ADDRESSES = addressTypeEnum.options.length
 export const MAX_PATIENT_CONTACTS = 5
@@ -111,19 +119,44 @@ export const PatientRequirementSchema = z
   .object({
     organizationId: uuidShape,
     patientId: uuidShape,
-    requirement_type: requirementTypeEnum,
+    requirement_type: patientRequirementTypeEnum,
     requirement_code: z.string().min(1, 'Requirement code is required'),
     matching_effect: matchingEffectEnum,
     required_skill_code: z.string().nullable().optional(),
     restricted_note_id: uuidShape.nullable().optional(),
     visibility_level: visibilityLevelEnum,
-    effective_start_date: dateShape,
+    effective_start_date: dateShape.optional(),
     effective_end_date: dateShape.nullable().optional(),
     structured_value: z.object({}).passthrough().optional(),
   })
   .strict()
 
 export type PatientRequirementInput = z.infer<typeof PatientRequirementSchema>
+
+export function getPatientRequirementDisplayValue(
+  requirement: Pick<PatientRequirement, 'requirement_type' | 'structured_value'>,
+): string {
+  const structuredValue = requirement.structured_value
+  if (!structuredValue) return 'Details not available'
+
+  if (requirement.requirement_type === 'Language' && typeof structuredValue.language === 'string') {
+    return structuredValue.language
+  }
+  if (
+    requirement.requirement_type === 'Gender Preference'
+    && typeof structuredValue.gender_preference === 'string'
+  ) {
+    return structuredValue.gender_preference
+  }
+  if (
+    requirement.requirement_type === 'Lifting'
+    && typeof structuredValue.minimum_patient_lifting_lbs === 'number'
+  ) {
+    return `Lift a patient weighing at least ${structuredValue.minimum_patient_lifting_lbs} lb`
+  }
+
+  return 'Details not available'
+}
 
 export const DeactivatePatientRequirementSchema = z.object({
   organizationId: uuidShape,

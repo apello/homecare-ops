@@ -54,38 +54,6 @@ export type MatchingEffect = 'Required' | 'Preferred' | 'Review Required' | 'Exc
 
 export type VisibilityLevel = 'Operational' | 'Clinical' | 'Restricted'
 
-// ─── Requirement field help text ─────────────────────────────────────────────
-// Rendered as InfoIcon tooltips beside the matching effect / visibility inputs.
-// VISIBILITY_LEVEL_HELP mirrors the RLS policies in 00001_initial_schema.sql
-// ("patient_requirements: read operational rows" / "read clinical and restricted
-// rows") and DATABASE.md §permission matrix.
-
-export const VISIBILITY_LEVEL_HELP: Record<VisibilityLevel, string> = {
-  Operational: 'Readable by anyone with the patients.read_basic permission.',
-  Clinical: 'Readable only by users with the patients.read_clinical permission.',
-  Restricted:
-    'Readable only by users with the patients.read_clinical permission; the underlying detail is held in a separate restricted note (restricted_note_id is a pointer only).',
-}
-
-// TODO(requirement-codes): These five placeholders are temporary. Replace them
-// with the team-confirmed requirement and caregiver skill code lists before the
-// matching engine is enabled.
-export const TEMPORARY_REQUIREMENT_CODES = [
-  { value: 'TEMP-001', label: 'Temporary code 1' },
-  { value: 'TEMP-002', label: 'Temporary code 2' },
-  { value: 'TEMP-003', label: 'Temporary code 3' },
-  { value: 'TEMP-004', label: 'Temporary code 4' },
-  { value: 'TEMP-005', label: 'Temporary code 5' },
-] as const
-
-// TODO(matching-effects): Confirm these descriptions with the operations team.
-export const MATCHING_EFFECT_HELP: Record<MatchingEffect, string> = {
-  Required: 'Caregivers who do not meet this requirement are excluded from matching results.',
-  Preferred: 'Caregivers who meet this requirement score higher, but others are still offered.',
-  'Review Required': 'Matches are still produced, but a scheduler must review them before assigning.',
-  Exclude: 'Caregivers who meet this requirement are excluded from matching results.',
-}
-
 export type PayerType = 'Medicare' | 'Medicaid' | 'Waiver' | 'Managed Care' | 'Private Pay' | 'Other'
 
 export type AuthorizationStatus =
@@ -374,6 +342,26 @@ export type Patient = {
   updated_at: string | null
   updated_by_user_id: string | null
   archived_at: string | null
+  created_by?: Pick<UserProfile, 'id' | 'first_name' | 'last_name'> | null
+}
+
+export type PatientListItem = Pick<
+  Patient,
+  | 'id'
+  | 'organization_id'
+  | 'first_name'
+  | 'last_name'
+  | 'date_of_birth'
+  | 'status'
+  | 'created_at'
+  | 'created_by_user_id'
+> & {
+  created_by: Pick<UserProfile, 'id' | 'first_name' | 'last_name'> | null
+}
+
+export type PatientListPage = {
+  rows: PatientListItem[]
+  rowCount: number
 }
 
 export type PatientAddress = {
@@ -422,7 +410,7 @@ export type PatientRequirement = {
   structured_value: Record<string, unknown> | null
   restricted_note_id: string | null
   visibility_level: VisibilityLevel
-  effective_start_date: string
+  effective_start_date: string | null
   effective_end_date: string | null
   active: boolean
   created_at: string
@@ -777,6 +765,17 @@ export type OperationalHistoryEvent = {
 // ─── Supabase Database type ───────────────────────────────────────────────────
 
 type TableDef<T> = { Row: T; Insert: Partial<T>; Update: Partial<T>; Relationships: [] }
+type PatientTableDef = Omit<TableDef<Patient>, 'Relationships'> & {
+  Relationships: [
+    {
+      foreignKeyName: 'patients_created_by_user_id_fkey'
+      columns: ['created_by_user_id']
+      isOneToOne: false
+      referencedRelation: 'user_profiles'
+      referencedColumns: ['id']
+    },
+  ]
+}
 
 export type Database = {
   public: {
@@ -791,7 +790,7 @@ export type Database = {
       billing_services:                   TableDef<BillingService>
       service_code_mappings:              TableDef<ServiceCodeMapping>
       notification_templates:             TableDef<NotificationTemplate>
-      patients:                           TableDef<Patient>
+      patients:                           PatientTableDef
       patient_addresses:                  TableDef<PatientAddress>
       patient_contacts:                   TableDef<PatientContact>
       patient_requirements:               TableDef<PatientRequirement>
@@ -862,7 +861,7 @@ export type Database = {
           structured_value?: Record<string, unknown> | null
           restricted_note_id?: string | null
           visibility_level: VisibilityLevel
-          effective_start_date: string
+          effective_start_date?: string | null
           effective_end_date?: string | null
         }
         Returns: PatientRequirement

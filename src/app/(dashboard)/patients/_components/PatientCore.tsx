@@ -15,6 +15,7 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { useRouter } from 'next/navigation'
 import PageContainer from '@/components/templates/crud-dashboard/components/PageContainer'
+import { getPatientRequirementDisplayValue } from '@/lib/schemas/patients.schema'
 import type { Patient, PatientAddress, PatientContact, PatientRequirement } from '@/types'
 
 const ACTION_BUTTON_SX = {
@@ -55,6 +56,9 @@ function InfoSection({ title, onEditClick, children, buttonText = 'Edit', toolti
         borderRadius: 1,
         border: '1px solid',
         borderColor: 'divider',
+        overflow: 'hidden',
+        p: 0,
+        gap: 0,
       }}
     >
       <Stack
@@ -63,8 +67,9 @@ function InfoSection({ title, onEditClick, children, buttonText = 'Edit', toolti
           justifyContent: 'space-between',
           alignItems: 'center',
           gap: 1,
-          p: 1.5,
           bgcolor: 'action.hover',
+          px: 2,
+          py: 1.5,
         }}
       >
         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
@@ -79,11 +84,13 @@ function InfoSection({ title, onEditClick, children, buttonText = 'Edit', toolti
         )}
       </Stack>
       <Divider />
-      <Box sx={{ flex: 1, px: 1.5 }}>
-        <Stack divider={<Divider flexItem />}>{children}</Stack>
-      </Box>
+      <Box sx={{ px: 2, py: 1 }}>{children}</Box>
     </Card>
   )
+}
+
+function InfoRows({ children }: { children: React.ReactNode }) {
+  return <Stack divider={<Divider flexItem />}>{children}</Stack>
 }
 
 function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -108,16 +115,140 @@ function InfoRow({ label, children }: { label: string; children: React.ReactNode
 
 export interface PatientCoreProps {
   patient: Patient
-  orgId: string
-  addresses: PatientAddress[]
-  contacts: PatientContact[]
-  requirements: PatientRequirement[]
+  addressesPromise: Promise<PatientAddress[]>
+  contactsPromise: Promise<PatientContact[]>
+  requirementsPromise: Promise<PatientRequirement[]>
 }
 
-export default function PatientCore({ patient, addresses, contacts, requirements }: PatientCoreProps) {
+const PREVIEW_ROW_LIMIT = 3
+
+function ViewMore({ path }: { path: string }) {
+  const router = useRouter()
+
+  return (
+    <Box sx={{ display: 'flex', justifyContent: 'center', py: 0.5 }}>
+      <Button size="small" variant="text" onClick={() => router.push(path)}>
+        View more
+      </Button>
+    </Box>
+  )
+}
+
+function PreviewFallback({ label }: { label: string }) {
+  return (
+    <InfoRow label={label}>
+      <CircularProgress size={16} />
+    </InfoRow>
+  )
+}
+
+function AddressPreview({
+  patientId,
+  addressesPromise,
+}: {
+  patientId: string
+  addressesPromise: Promise<PatientAddress[]>
+}) {
+  const addresses = React.use(addressesPromise)
+  const previewRows = addresses.slice(0, PREVIEW_ROW_LIMIT)
+
+  return (
+    <InfoRows>
+      {previewRows.length === 0 ? (
+        <InfoRow label="Address">No addresses added yet.</InfoRow>
+      ) : (
+        previewRows.map((address) => {
+          const parts = [
+            address.address_line_1,
+            address.address_line_2,
+            address.city,
+            address.state,
+            address.zip_code,
+          ].filter(Boolean)
+          return (
+            <InfoRow label={address.address_type} key={address.id}>
+              {parts.join(', ')}
+            </InfoRow>
+          )
+        })
+      )}
+      {addresses.length > PREVIEW_ROW_LIMIT ? (
+        <ViewMore path={`/patients/${patientId}/address`} />
+      ) : null}
+    </InfoRows>
+  )
+}
+
+function ContactPreview({
+  patientId,
+  contactsPromise,
+}: {
+  patientId: string
+  contactsPromise: Promise<PatientContact[]>
+}) {
+  const contacts = React.use(contactsPromise)
+  const previewRows = contacts.slice(0, PREVIEW_ROW_LIMIT)
+
+  return (
+    <InfoRows>
+      {previewRows.length === 0 ? (
+        <InfoRow label="Contact">No contact information on file.</InfoRow>
+      ) : (
+        previewRows.map((contact) => {
+          const details = [contact.relationship, contact.phone, contact.email].filter(Boolean).join(' · ')
+          return (
+            <InfoRow label={contact.contact_type} key={contact.id}>
+              {contact.contact_name}
+              {details ? ` (${details})` : ''}
+            </InfoRow>
+          )
+        })
+      )}
+      {contacts.length > PREVIEW_ROW_LIMIT ? (
+        <ViewMore path={`/patients/${patientId}/contact`} />
+      ) : null}
+    </InfoRows>
+  )
+}
+
+function RequirementPreview({
+  patientId,
+  requirementsPromise,
+}: {
+  patientId: string
+  requirementsPromise: Promise<PatientRequirement[]>
+}) {
+  const requirements = React.use(requirementsPromise)
+  const previewRows = requirements.slice(0, PREVIEW_ROW_LIMIT)
+
+  return (
+    <InfoRows>
+      {previewRows.length === 0 ? (
+        <InfoRow label="Requirement">No requirements added yet.</InfoRow>
+      ) : (
+        previewRows.map((requirement) => (
+          <InfoRow label={requirement.requirement_type} key={requirement.id}>
+            {getPatientRequirementDisplayValue(requirement)}
+          </InfoRow>
+        ))
+      )}
+      {requirements.length > PREVIEW_ROW_LIMIT ? (
+        <ViewMore path={`/patients/${patientId}/requirement`} />
+      ) : null}
+    </InfoRows>
+  )
+}
+
+export default function PatientCore({
+  patient,
+  addressesPromise,
+  contactsPromise,
+  requirementsPromise,
+}: PatientCoreProps) {
   const router = useRouter()
   const [isRefreshing, startRefresh] = React.useTransition()
   const fullName = [patient.first_name, patient.middle_name, patient.last_name].filter(Boolean).join(' ')
+  const createdByName = [patient.created_by?.first_name, patient.created_by?.last_name].filter(Boolean).join(' ')
 
   const goTo = React.useCallback(
     (path: string) => () => {
@@ -172,70 +303,46 @@ export default function PatientCore({ patient, addresses, contacts, requirements
           }}
         >
           <InfoSection title="Demographics" onEditClick={goTo('edit')}>
-            <InfoRow label="Name">{fullName || '—'}</InfoRow>
-            <InfoRow label="Date of Birth">{patient.date_of_birth ?? '—'}</InfoRow>
-            <InfoRow label="Status">{patient.status}</InfoRow>
-            <InfoRow label="External ID">{patient.patient_external_id ?? '—'}</InfoRow>
+            <InfoRows>
+              <InfoRow label="Name">{fullName || '—'}</InfoRow>
+              <InfoRow label="Date of Birth">{patient.date_of_birth ?? '—'}</InfoRow>
+              <InfoRow label="Status">{patient.status}</InfoRow>
+              <InfoRow label="External ID">{patient.patient_external_id ?? '—'}</InfoRow>
+              <InfoRow label="Created By">{createdByName || 'Unknown user'}</InfoRow>
+            </InfoRows>
           </InfoSection>
 
           <InfoSection title="Caregiver Assignment" onEditClick={goTo('matching')} buttonText="View Matches">
-            <InfoRow label="Assignment">No caregiver assigned.</InfoRow>
+            <InfoRows>
+              <InfoRow label="Assignment">No caregiver assigned.</InfoRow>
+            </InfoRows>
           </InfoSection>
 
           <InfoSection title="Addresses" onEditClick={goTo('address')}>
-            {addresses.length === 0 ? (
-              <InfoRow label="Address">No addresses added yet.</InfoRow>
-            ) : (
-              addresses.map((address) => {
-                const parts = [
-                  address.address_line_1,
-                  address.address_line_2,
-                  address.city,
-                  address.state,
-                  address.zip_code,
-                ].filter(Boolean)
-                return (
-                  <InfoRow label={address.address_type} key={address.id}>
-                    {parts.join(', ')}
-                  </InfoRow>
-                )
-              })
-            )}
+            <React.Suspense fallback={<InfoRows><PreviewFallback label="Address" /></InfoRows>}>
+              <AddressPreview patientId={patient.id} addressesPromise={addressesPromise} />
+            </React.Suspense>
           </InfoSection>
 
           <InfoSection title="Emergency Contacts" onEditClick={goTo('contact')}>
-            {contacts.length === 0 ? (
-              <InfoRow label="Contact">No contact information on file.</InfoRow>
-            ) : (
-              contacts.map((contact) => {
-                const details = [contact.relationship, contact.phone, contact.email].filter(Boolean).join(' · ')
-                return (
-                  <InfoRow label={contact.contact_type} key={contact.id}>
-                    {contact.contact_name}
-                    {details ? ` (${details})` : ''}
-                  </InfoRow>
-                )
-              })
-            )}
+            <React.Suspense fallback={<InfoRows><PreviewFallback label="Contact" /></InfoRows>}>
+              <ContactPreview patientId={patient.id} contactsPromise={contactsPromise} />
+            </React.Suspense>
           </InfoSection>
 
           {/* TODO(phase-6/authorizations): hardcoded empty state. Plan §4.7 / §6 —
               pass authorizations from the detail page and render payer / status /
               authorization number after the authorization slice is implemented. */}
           <InfoSection title="Patient Authorization" onEditClick={goTo('authorization')}>
-            <InfoRow label="Authorization">No authorization information on file.</InfoRow>
+            <InfoRows>
+              <InfoRow label="Authorization">No authorization information on file.</InfoRow>
+            </InfoRows>
           </InfoSection>
 
           <InfoSection title="Requirements" onEditClick={goTo('requirement')}>
-            {requirements.length === 0 ? (
-              <InfoRow label="Requirement">No requirements added yet.</InfoRow>
-            ) : (
-              requirements.map((requirement) => (
-                <InfoRow label={requirement.requirement_type} key={requirement.id}>
-                  {requirement.requirement_code} ({requirement.matching_effect})
-                </InfoRow>
-              ))
-            )}
+            <React.Suspense fallback={<InfoRows><PreviewFallback label="Requirement" /></InfoRows>}>
+              <RequirementPreview patientId={patient.id} requirementsPromise={requirementsPromise} />
+            </React.Suspense>
           </InfoSection>
         </Box>
       </Stack>
