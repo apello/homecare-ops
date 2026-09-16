@@ -10,6 +10,9 @@ import {
   deactivatePatientContact,
   deactivatePatientRequirement,
   getPatient,
+  getPatientAddress,
+  getPatientContact,
+  getPatientRequirement,
   listPatientAddresses,
   listPatientContacts,
   listPatientRequirements,
@@ -31,6 +34,8 @@ function makeSupabase(overrides: Record<string, unknown> = {}) {
     eq: vi.fn().mockReturnThis(),
     is: vi.fn().mockReturnThis(),
     order: vi.fn(),
+    range: vi.fn(),
+    limit: vi.fn(),
     single: vi.fn(),
     rpc: vi.fn(),
     count: null as number | null,
@@ -54,28 +59,33 @@ describe('listPatients', () => {
   it('filters by organization and excludes archived patients by default', async () => {
     const rows = [{ id: PATIENT_ID }]
     const supabase = makeSupabase()
-    supabase.order.mockResolvedValue({ data: rows, error: null })
+    supabase.order.mockReturnValue(supabase)
+    supabase.range.mockResolvedValue({ data: rows, error: null, count: 1 })
 
-    await expect(listPatients(ORG_ID)).resolves.toEqual(rows)
+    await expect(listPatients(ORG_ID)).resolves.toEqual({ rows, rowCount: 1 })
     expect(supabase.from).toHaveBeenCalledWith('patients')
     expect(supabase.eq).toHaveBeenCalledWith('organization_id', ORG_ID)
     expect(supabase.is).toHaveBeenCalledWith('archived_at', null)
+    expect(supabase.range).toHaveBeenCalledWith(0, 9)
   })
 
-  it('applies a status filter and includes archived rows only for Archived', async () => {
+  it('applies status and pagination filters and includes archived rows only for Archived', async () => {
     const supabase = makeSupabase()
-    supabase.order.mockResolvedValue({ data: [], error: null })
+    supabase.order.mockReturnValue(supabase)
+    supabase.range.mockResolvedValue({ data: [], error: null, count: 0 })
 
-    await listPatients(ORG_ID, { status: 'Archived' })
+    await listPatients(ORG_ID, { status: 'Archived', page: 2, pageSize: 25 })
     expect(supabase.eq).toHaveBeenCalledWith('status', 'Archived')
     expect(supabase.is).not.toHaveBeenCalled()
+    expect(supabase.range).toHaveBeenCalledWith(50, 74)
   })
 
-  it('returns an empty array on read error', async () => {
+  it('returns an empty page on read error', async () => {
     const supabase = makeSupabase()
-    supabase.order.mockResolvedValue({ data: null, error: { message: 'read failed' } })
+    supabase.order.mockReturnValue(supabase)
+    supabase.range.mockResolvedValue({ data: null, error: { message: 'read failed' }, count: null })
 
-    await expect(listPatients(ORG_ID)).resolves.toEqual([])
+    await expect(listPatients(ORG_ID)).resolves.toEqual({ rows: [], rowCount: 0 })
   })
 })
 
@@ -87,6 +97,7 @@ describe('getPatient', () => {
 
     await expect(getPatient(ORG_ID, PATIENT_ID)).resolves.toEqual(row)
     expect(supabase.from).toHaveBeenCalledWith('patients')
+    expect(supabase.select).toHaveBeenCalledWith(expect.stringContaining('created_by:user_profiles'))
     expect(supabase.eq).toHaveBeenCalledWith('id', PATIENT_ID)
     expect(supabase.eq).toHaveBeenCalledWith('organization_id', ORG_ID)
   })
@@ -224,6 +235,34 @@ describe('patient addresses', () => {
     await expect(listPatientAddresses(ORG_ID, PATIENT_ID)).resolves.toEqual([])
   })
 
+  it('limits address previews to the requested sentinel size', async () => {
+    const rows = [{ id: CHILD_ID }]
+    const supabase = makeSupabase()
+    supabase.order.mockReturnValue(supabase)
+    supabase.limit.mockResolvedValue({ data: rows, error: null })
+
+    await expect(listPatientAddresses(ORG_ID, PATIENT_ID, 4)).resolves.toEqual(rows)
+    expect(supabase.limit).toHaveBeenCalledWith(4)
+  })
+
+  it('gets one active address by org, patient, and address id', async () => {
+    const row = { id: CHILD_ID }
+    const supabase = makeSupabase()
+    supabase.single.mockResolvedValue({ data: row, error: null })
+
+    await expect(getPatientAddress(ORG_ID, PATIENT_ID, CHILD_ID)).resolves.toEqual(row)
+    expect(supabase.eq).toHaveBeenCalledWith('id', CHILD_ID)
+    expect(supabase.eq).toHaveBeenCalledWith('organization_id', ORG_ID)
+    expect(supabase.eq).toHaveBeenCalledWith('patient_id', PATIENT_ID)
+    expect(supabase.eq).toHaveBeenCalledWith('active', true)
+  })
+
+  it('returns null when one address cannot be loaded', async () => {
+    const supabase = makeSupabase()
+    supabase.single.mockResolvedValue({ data: null, error: { message: 'not found' } })
+    await expect(getPatientAddress(ORG_ID, PATIENT_ID, CHILD_ID)).resolves.toBeNull()
+  })
+
   it.each(['Service', 'Mailing', 'Other'] as const)(
     'keeps at most one active %s address by deactivating that type before one insert',
     async (addressType) => {
@@ -299,11 +338,11 @@ describe('patient addresses', () => {
 
 describe('patient requirements', () => {
   const input = {
-    requirement_type: 'Skill' as const,
-    requirement_code: 'TEMP-SKILL',
-    matching_effect: 'Required' as const,
+    requirement_type: 'Language' as const,
+    requirement_code: 'LANGUAGE:Spanish',
+    matching_effect: 'Preferred' as const,
+    structured_value: { language: 'Spanish' },
     visibility_level: 'Operational' as const,
-    effective_start_date: '2026-01-01',
   }
 
   it('lists all active requirements with organization and patient filters', async () => {
@@ -322,6 +361,34 @@ describe('patient requirements', () => {
     const supabase = makeSupabase()
     supabase.order.mockResolvedValue({ data: null, error: { message: 'read failed' } })
     await expect(listPatientRequirements(ORG_ID, PATIENT_ID)).resolves.toEqual([])
+  })
+
+  it('limits requirement previews before returning rows', async () => {
+    const rows = [{ id: CHILD_ID }]
+    const supabase = makeSupabase()
+    supabase.order.mockReturnValue(supabase)
+    supabase.limit.mockResolvedValue({ data: rows, error: null })
+
+    await expect(listPatientRequirements(ORG_ID, PATIENT_ID, undefined, 4)).resolves.toEqual(rows)
+    expect(supabase.limit).toHaveBeenCalledWith(4)
+  })
+
+  it('gets one active requirement instead of loading the full table', async () => {
+    const row = { id: CHILD_ID }
+    const supabase = makeSupabase()
+    supabase.single.mockResolvedValue({ data: row, error: null })
+
+    await expect(getPatientRequirement(ORG_ID, PATIENT_ID, CHILD_ID)).resolves.toEqual(row)
+    expect(supabase.eq).toHaveBeenCalledWith('id', CHILD_ID)
+    expect(supabase.eq).toHaveBeenCalledWith('organization_id', ORG_ID)
+    expect(supabase.eq).toHaveBeenCalledWith('patient_id', PATIENT_ID)
+    expect(supabase.eq).toHaveBeenCalledWith('active', true)
+  })
+
+  it('returns null when one requirement cannot be loaded', async () => {
+    const supabase = makeSupabase()
+    supabase.single.mockResolvedValue({ data: null, error: { message: 'not found' } })
+    await expect(getPatientRequirement(ORG_ID, PATIENT_ID, CHILD_ID)).resolves.toBeNull()
   })
 
   it('uses the visibility RPC when a visibility ceiling is supplied', async () => {
@@ -352,14 +419,13 @@ describe('patient requirements', () => {
     expect(supabase.rpc).toHaveBeenCalledWith('upsert_patient_requirement', {
       target_org_id: ORG_ID,
       target_patient_id: PATIENT_ID,
-      req_type: 'Skill',
-      req_code: 'TEMP-SKILL',
-      matching_effect: 'Required',
+      req_type: 'Language',
+      req_code: 'LANGUAGE:Spanish',
+      matching_effect: 'Preferred',
       required_skill_code: null,
-      structured_value: null,
+      structured_value: { language: 'Spanish' },
       restricted_note_id: null,
       visibility_level: 'Operational',
-      effective_start_date: '2026-01-01',
       effective_end_date: null,
     })
     expect(supabase.select).not.toHaveBeenCalled()
@@ -411,6 +477,34 @@ describe('patient contacts', () => {
     const supabase = makeSupabase()
     supabase.order.mockResolvedValue({ data: null, error: { message: 'read failed' } })
     await expect(listPatientContacts(ORG_ID, PATIENT_ID)).resolves.toEqual([])
+  })
+
+  it('limits contact previews to three rows plus a view-more sentinel', async () => {
+    const rows = [{ id: CHILD_ID }]
+    const supabase = makeSupabase()
+    supabase.order.mockReturnValue(supabase)
+    supabase.limit.mockResolvedValue({ data: rows, error: null })
+
+    await expect(listPatientContacts(ORG_ID, PATIENT_ID, 4)).resolves.toEqual(rows)
+    expect(supabase.limit).toHaveBeenCalledWith(4)
+  })
+
+  it('gets one active contact instead of loading the full table', async () => {
+    const row = { id: CHILD_ID }
+    const supabase = makeSupabase()
+    supabase.single.mockResolvedValue({ data: row, error: null })
+
+    await expect(getPatientContact(ORG_ID, PATIENT_ID, CHILD_ID)).resolves.toEqual(row)
+    expect(supabase.eq).toHaveBeenCalledWith('id', CHILD_ID)
+    expect(supabase.eq).toHaveBeenCalledWith('organization_id', ORG_ID)
+    expect(supabase.eq).toHaveBeenCalledWith('patient_id', PATIENT_ID)
+    expect(supabase.eq).toHaveBeenCalledWith('active', true)
+  })
+
+  it('returns null when one contact cannot be loaded', async () => {
+    const supabase = makeSupabase()
+    supabase.single.mockResolvedValue({ data: null, error: { message: 'not found' } })
+    await expect(getPatientContact(ORG_ID, PATIENT_ID, CHILD_ID)).resolves.toBeNull()
   })
 
   it('creates a fifth active contact when four exist', async () => {

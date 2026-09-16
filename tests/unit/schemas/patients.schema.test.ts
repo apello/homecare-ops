@@ -2,12 +2,16 @@ import { describe, expect, it } from 'vitest'
 
 import {
   ArchivePatientSchema,
+  COMMON_LANGUAGES,
   CreatePatientSchema,
   DeactivatePatientAddressSchema,
   DeactivatePatientContactSchema,
   DeactivatePatientRequirementSchema,
+  getPatientRequirementDisplayValue,
   MAX_PATIENT_ADDRESSES,
   MAX_PATIENT_CONTACTS,
+  PATIENT_LIFTING_THRESHOLDS,
+  PATIENT_REQUIREMENT_TYPES,
   PatientAddressSchema,
   PatientListResponseSchema,
   PatientRequirementSchema,
@@ -32,11 +36,11 @@ const address = {
 const requirement = {
   organizationId: ORG_ID,
   patientId: PATIENT_ID,
-  requirement_type: 'Skill' as const,
-  requirement_code: 'TEMP-SKILL',
-  matching_effect: 'Required' as const,
+  requirement_type: 'Language' as const,
+  requirement_code: 'LANGUAGE:Spanish',
+  matching_effect: 'Preferred' as const,
+  structured_value: { language: 'Spanish' },
   visibility_level: 'Operational' as const,
-  effective_start_date: '2026-01-01',
 }
 
 describe('PatientAddressSchema', () => {
@@ -129,12 +133,19 @@ describe('UpdatePatientSchema', () => {
 })
 
 describe('PatientRequirementSchema', () => {
+  it('exposes only the supported patient-facing requirement choices', () => {
+    expect(PATIENT_REQUIREMENT_TYPES).toEqual(['Language', 'Gender Preference', 'Lifting'])
+    expect(COMMON_LANGUAGES).toContain('Other')
+    expect(PATIENT_LIFTING_THRESHOLDS).toEqual([150, 200, 250])
+  })
+
   it('parses a valid requirement', () => {
     expect(PatientRequirementSchema.parse(requirement)).toEqual(requirement)
   })
 
   it.each([
     ['requirement_type', 'Unsupported'],
+    ['requirement_type', 'Skill'],
     ['matching_effect', 'Optional'],
     ['visibility_level', 'Public'],
   ])('rejects invalid %s values', (field, value) => {
@@ -148,13 +159,29 @@ describe('PatientRequirementSchema', () => {
     'requirement_code',
     'matching_effect',
     'visibility_level',
-    'effective_start_date',
   ] as const)('rejects a missing %s', (field) => {
     expect(PatientRequirementSchema.safeParse({ ...requirement, [field]: undefined }).success).toBe(false)
   })
 
   it('rejects unknown fields', () => {
     expect(PatientRequirementSchema.safeParse({ ...requirement, extra: true }).success).toBe(false)
+  })
+
+  it('allows both effective dates to be omitted', () => {
+    const parsed = PatientRequirementSchema.parse(requirement)
+    expect(parsed.effective_start_date).toBeUndefined()
+    expect(parsed.effective_end_date).toBeUndefined()
+  })
+
+  it.each([
+    ['Language', { language: 'Spanish' }, 'Spanish'],
+    ['Gender Preference', { gender_preference: 'Female' }, 'Female'],
+    ['Lifting', { minimum_patient_lifting_lbs: 200 }, 'Lift a patient weighing at least 200 lb'],
+  ] as const)('formats the %s value without exposing internal metadata', (requirementType, structuredValue, expected) => {
+    expect(getPatientRequirementDisplayValue({
+      requirement_type: requirementType,
+      structured_value: structuredValue,
+    })).toBe(expected)
   })
 })
 

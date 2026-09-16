@@ -177,11 +177,11 @@ const addressInput = {
 const requirementInput = {
   organizationId: ORG_ID,
   patientId: PATIENT_ID,
-  requirement_type: 'Skill',
-  requirement_code: 'TEMP-SKILL',
-  matching_effect: 'Required',
+  requirement_type: 'Language',
+  requirement_code: 'LANGUAGE:Spanish',
+  matching_effect: 'Preferred',
+  structured_value: { language: 'Spanish' },
   visibility_level: 'Operational',
-  effective_start_date: '2026-01-01',
 }
 
 const contactInput = {
@@ -291,7 +291,6 @@ const mutationCases: MutationCase[] = [
       'requirement_code',
       'matching_effect',
       'visibility_level',
-      'effective_start_date',
     ],
     serviceMock: mockUpsertRequirement,
     expectedArgs: [
@@ -299,14 +298,14 @@ const mutationCases: MutationCase[] = [
       PATIENT_ID,
       USER_ID,
       {
-        requirement_type: 'Skill',
-        requirement_code: 'TEMP-SKILL',
-        matching_effect: 'Required',
+        requirement_type: 'Language',
+        requirement_code: 'LANGUAGE:Spanish',
+        matching_effect: 'Preferred',
         required_skill_code: undefined,
-        structured_value: undefined,
+        structured_value: { language: 'Spanish' },
         restricted_note_id: undefined,
         visibility_level: 'Operational',
-        effective_start_date: '2026-01-01',
+        effective_start_date: undefined,
         effective_end_date: undefined,
       },
     ],
