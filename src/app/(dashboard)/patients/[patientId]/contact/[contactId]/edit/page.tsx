@@ -2,8 +2,8 @@ import { redirect } from 'next/navigation'
 import Typography from '@mui/material/Typography'
 import { requireAuth, getActiveMembership } from '@/lib/auth/server'
 import { hasPermission } from '@/lib/permissions'
+import { getPatient, getPatientContact } from '@/lib/services/patients.service'
 import UnauthorizedMessage from '@/components/UnauthorizedMessage'
-import { getPatientAction, listPatientContactsAction } from '../../../../actions'
 import ContactForm from '../../../../_components/ContactForm'
 
 interface ContactEditPageProps {
@@ -26,20 +26,14 @@ export default async function ContactEditPage({ params }: ContactEditPageProps) 
   const resolvedParams = await params
   const orgId = membership.organization_id
 
-  const [patientResult, contactsResult] = await Promise.all([
-    getPatientAction(orgId, resolvedParams.patientId),
-    listPatientContactsAction(orgId, resolvedParams.patientId),
+  const [patient, contact] = await Promise.all([
+    getPatient(orgId, resolvedParams.patientId),
+    getPatientContact(orgId, resolvedParams.patientId, resolvedParams.contactId),
   ])
-
-  const patient = patientResult.success ? patientResult.data ?? null : null
 
   if (!patient) {
     return <Typography sx={{ p: 3 }}>Patient not found.</Typography>
   }
-
-  const contact = (contactsResult.success ? contactsResult.data ?? [] : []).find(
-    (item) => item.id === resolvedParams.contactId,
-  )
 
   if (!contact) {
     return <Typography sx={{ p: 3 }}>Contact not found.</Typography>

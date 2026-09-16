@@ -2,8 +2,8 @@ import { redirect } from 'next/navigation'
 import Typography from '@mui/material/Typography'
 import { requireAuth, getActiveMembership } from '@/lib/auth/server'
 import { hasPermission } from '@/lib/permissions'
+import { getPatient, listPatientContacts } from '@/lib/services/patients.service'
 import UnauthorizedMessage from '@/components/UnauthorizedMessage'
-import { getPatientAction, listPatientContactsAction } from '../../actions'
 import ContactList from '../../_components/ContactList'
 
 interface ContactPageProps {
@@ -25,12 +25,10 @@ export default async function ContactPage({ params }: ContactPageProps) {
   const resolvedParams = await params
   const orgId = membership.organization_id
 
-  const [patientResult, contactsResult] = await Promise.all([
-    getPatientAction(orgId, resolvedParams.patientId),
-    listPatientContactsAction(orgId, resolvedParams.patientId),
+  const [patient, contacts] = await Promise.all([
+    getPatient(orgId, resolvedParams.patientId),
+    listPatientContacts(orgId, resolvedParams.patientId),
   ])
-
-  const patient = patientResult.success ? patientResult.data ?? null : null
 
   if (!patient) {
     return <Typography sx={{ p: 3 }}>Patient not found.</Typography>
@@ -40,7 +38,7 @@ export default async function ContactPage({ params }: ContactPageProps) {
     <ContactList
       patient={patient}
       orgId={orgId}
-      contacts={contactsResult.success ? contactsResult.data ?? [] : []}
+      contacts={contacts}
     />
   )
 }

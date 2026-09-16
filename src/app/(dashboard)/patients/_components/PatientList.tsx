@@ -13,6 +13,7 @@ import {
   DataGrid,
   GridActionsCellItem,
   GridColDef,
+  GridPaginationModel,
   gridClasses,
 } from '@mui/x-data-grid'
 import AddIcon from '@mui/icons-material/Add'
@@ -23,15 +24,9 @@ import { useRouter } from 'next/navigation'
 import { useDialogs } from '@/components/templates/crud-dashboard/hooks/useDialogs/useDialogs'
 import useNotifications from '@/components/templates/crud-dashboard/hooks/useNotifications/useNotifications'
 import PageContainer from '@/components/templates/crud-dashboard/components/PageContainer'
-import type { Patient } from '@/types'
+import { PAGE_SIZE_OPTIONS, replacePaginationSearchParams } from '@/lib/pagination'
+import type { PatientListItem, PatientListPage } from '@/types'
 import { listPatientsAction, archivePatientAction } from '../actions'
-
-type PatientListRow = Patient & {
-  created_by?: {
-    first_name: string | null
-    last_name: string | null
-  } | null
-}
 
 const STATUS_COLOR: Record<string, 'success' | 'warning' | 'default' | 'info'> = {
   Intake: 'info',
@@ -52,36 +47,43 @@ const STATUS_HELP: Record<string, string> = {
 
 export interface PatientListProps {
   orgId: string
-  initialPatients: Patient[]
+  initialPage: PatientListPage
+  initialPaginationModel: GridPaginationModel
 }
 
-export default function PatientList({ orgId, initialPatients }: PatientListProps) {
+export default function PatientList({ orgId, initialPage, initialPaginationModel }: PatientListProps) {
   const router = useRouter()
   const dialogs = useDialogs()
   const notifications = useNotifications()
 
-  const [patients, setPatients] = React.useState<PatientListRow[]>(initialPatients)
+  const [patients, setPatients] = React.useState<PatientListItem[]>(initialPage.rows)
+  const [rowCount, setRowCount] = React.useState(initialPage.rowCount)
+  const [paginationModel, setPaginationModel] = React.useState<GridPaginationModel>(initialPaginationModel)
   const [isLoading, setIsLoading] = React.useState(false)
   const [error, setError] = React.useState<Error | null>(null)
 
-  const loadData = React.useCallback(async () => {
+  const loadData = React.useCallback(async (model: GridPaginationModel = paginationModel) => {
     setError(null)
     setIsLoading(true)
 
     try {
-      const result = await listPatientsAction(orgId)
+      const result = await listPatientsAction(orgId, {
+        page: model.page,
+        pageSize: model.pageSize,
+      })
 
       if (!result.success) {
         throw new Error(result.error ?? 'Failed to load patients.')
       }
 
-      setPatients(result.data ?? [])
+      setPatients(result.data?.rows ?? [])
+      setRowCount(result.data?.rowCount ?? 0)
     } catch (err) {
       setError(err as Error)
     } finally {
       setIsLoading(false)
     }
-  }, [orgId])
+  }, [orgId, paginationModel])
 
   const handleRefresh = React.useCallback(() => {
     if (!isLoading) loadData()
@@ -90,14 +92,14 @@ export default function PatientList({ orgId, initialPatients }: PatientListProps
   const handleCreateClick = () => router.push('/patients/create')
 
   const handleRowView = React.useCallback(
-    (patient: Patient) => () => {
+    (patient: PatientListItem) => () => {
       router.push(`/patients/${patient.id}`)
     },
     [router],
   )
 
   const handleRowArchive = React.useCallback(
-    (patient: Patient) => async () => {
+    (patient: PatientListItem) => async () => {
       const fullName = `${patient.first_name} ${patient.last_name}`.trim()
 
       const confirmed = await dialogs.confirm(`Archive ${fullName}?`, {
@@ -137,7 +139,7 @@ export default function PatientList({ orgId, initialPatients }: PatientListProps
     [dialogs, notifications, orgId, loadData],
   )
 
-  const columns = React.useMemo<GridColDef<PatientListRow>[]>(
+  const columns = React.useMemo<GridColDef<PatientListItem>[]>(
     () => [
       {
         field: 'name',
@@ -242,8 +244,19 @@ export default function PatientList({ orgId, initialPatients }: PatientListProps
             columns={columns}
             disableRowSelectionOnClick
             showToolbar
-            initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-            pageSizeOptions={[5, 10, 25]}
+            paginationMode="server"
+            rowCount={rowCount}
+            paginationModel={paginationModel}
+            onPaginationModelChange={(model) => {
+              setPaginationModel(model)
+              window.history.replaceState(
+                window.history.state,
+                '',
+                replacePaginationSearchParams(window.location.href, model),
+              )
+              void loadData(model)
+            }}
+            pageSizeOptions={[...PAGE_SIZE_OPTIONS]}
             sx={{
               opacity: isLoading ? 0.5 : 1,
               transition: 'opacity 0.2s',

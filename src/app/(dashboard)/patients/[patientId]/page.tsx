@@ -2,13 +2,13 @@ import { redirect } from 'next/navigation'
 import Typography from '@mui/material/Typography'
 import { requireAuth, getActiveMembership } from '@/lib/auth/server'
 import { hasPermission } from '@/lib/permissions'
-import UnauthorizedMessage from '@/components/UnauthorizedMessage'
 import {
-  getPatientAction,
-  listPatientAddressesAction,
-  listPatientContactsAction,
-  listPatientRequirementsAction,
-} from '../actions'
+  getPatient,
+  listPatientAddresses,
+  listPatientContacts,
+  listPatientRequirements,
+} from '@/lib/services/patients.service'
+import UnauthorizedMessage from '@/components/UnauthorizedMessage'
 import PatientCore from '../_components/PatientCore'
 
 interface PatientPageProps {
@@ -30,29 +30,22 @@ export default async function PatientPage({ params }: PatientPageProps) {
   const resolvedParams = await params
   const orgId = membership.organization_id
 
-  const canReadClinical = await hasPermission(orgId, 'patients.read_clinical')
-  const visibilityLevel = canReadClinical ? 'Clinical' : 'Operational'
-
-  const [patientResult, addressesResult, contactsResult, requirementsResult] = await Promise.all([
-    getPatientAction(orgId, resolvedParams.patientId),
-    listPatientAddressesAction(orgId, resolvedParams.patientId),
-    listPatientContactsAction(orgId, resolvedParams.patientId),
-    listPatientRequirementsAction(orgId, resolvedParams.patientId, visibilityLevel),
-  ])
-
-  const patient = patientResult.success ? patientResult.data ?? null : null
+  const patient = await getPatient(orgId, resolvedParams.patientId)
 
   if (!patient) {
     return <Typography sx={{ p: 3 }}>Patient not found.</Typography>
   }
 
+  const addressesPromise = listPatientAddresses(orgId, patient.id, 4)
+  const contactsPromise = listPatientContacts(orgId, patient.id, 4)
+  const requirementsPromise = listPatientRequirements(orgId, patient.id, undefined, 4)
+
   return (
     <PatientCore
       patient={patient}
-      orgId={orgId}
-      addresses={addressesResult.success ? addressesResult.data ?? [] : []}
-      contacts={contactsResult.success ? contactsResult.data ?? [] : []}
-      requirements={requirementsResult.success ? requirementsResult.data ?? [] : []}
+      addressesPromise={addressesPromise}
+      contactsPromise={contactsPromise}
+      requirementsPromise={requirementsPromise}
     />
   )
 }

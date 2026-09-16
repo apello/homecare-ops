@@ -2,8 +2,8 @@ import { redirect } from 'next/navigation'
 import Typography from '@mui/material/Typography'
 import { requireAuth, getActiveMembership } from '@/lib/auth/server'
 import { hasPermission } from '@/lib/permissions'
+import { getPatient } from '@/lib/services/patients.service'
 import UnauthorizedMessage from '@/components/UnauthorizedMessage'
-import { getPatientAction } from '../../../actions'
 import RequirementForm from '../../../_components/RequirementForm'
 
 interface RequirementNewPageProps {
@@ -25,8 +25,7 @@ export default async function RequirementNewPage({ params }: RequirementNewPageP
   const resolvedParams = await params
   const orgId = membership.organization_id
 
-  const patientResult = await getPatientAction(orgId, resolvedParams.patientId)
-  const patient = patientResult.success ? patientResult.data ?? null : null
+  const patient = await getPatient(orgId, resolvedParams.patientId)
 
   if (!patient) {
     return <Typography sx={{ p: 3 }}>Patient not found.</Typography>

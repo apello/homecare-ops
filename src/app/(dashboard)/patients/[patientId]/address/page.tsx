@@ -2,8 +2,8 @@ import { redirect } from 'next/navigation'
 import Typography from '@mui/material/Typography'
 import { requireAuth, getActiveMembership } from '@/lib/auth/server'
 import { hasPermission } from '@/lib/permissions'
+import { getPatient, listPatientAddresses } from '@/lib/services/patients.service'
 import UnauthorizedMessage from '@/components/UnauthorizedMessage'
-import { getPatientAction, listPatientAddressesAction } from '../../actions'
 import PatientAddressList from '../../_components/PatientAddressList'
 
 interface AddressListPageProps {
@@ -25,12 +25,10 @@ export default async function AddressListPage({ params }: AddressListPageProps) 
   const resolvedParams = await params
   const orgId = membership.organization_id
 
-  const [patientResult, addressesResult] = await Promise.all([
-    getPatientAction(orgId, resolvedParams.patientId),
-    listPatientAddressesAction(orgId, resolvedParams.patientId),
+  const [patient, addresses] = await Promise.all([
+    getPatient(orgId, resolvedParams.patientId),
+    listPatientAddresses(orgId, resolvedParams.patientId),
   ])
-
-  const patient = patientResult.success ? patientResult.data ?? null : null
 
   if (!patient) {
     return <Typography sx={{ p: 3 }}>Patient not found.</Typography>
@@ -40,7 +38,7 @@ export default async function AddressListPage({ params }: AddressListPageProps) 
     <PatientAddressList
       patient={patient}
       orgId={orgId}
-      addresses={addressesResult.success ? addressesResult.data ?? [] : []}
+      addresses={addresses}
     />
   )
 }

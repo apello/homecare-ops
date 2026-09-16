@@ -1,9 +1,11 @@
 import { createClient } from '@/lib/db/client'
+import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from '@/lib/pagination'
 import { MAX_PATIENT_CONTACTS } from '@/lib/schemas/patients.schema'
 import type {
   Patient,
   PatientAddress,
   PatientContact,
+  PatientListPage,
   PatientRequirement,
   PatientStatus,
   RequirementType,
@@ -35,7 +37,7 @@ type PatientRequirementInput = {
   structured_value?: Record<string, unknown> | null
   restricted_note_id?: string | null
   visibility_level: VisibilityLevel
-  effective_start_date: string
+  effective_start_date?: string
   effective_end_date?: string | null
 }
 
@@ -50,20 +52,35 @@ type PatientContactInput = {
 
 export async function listPatients(
   orgId: string,
-  filters?: { status?: PatientStatus },
-): Promise<PatientWithDates[]> {
+  filters?: { status?: PatientStatus; page?: number; pageSize?: number },
+): Promise<PatientListPage> {
   const supabase = await createClient()
+  const requestedPage = filters?.page ?? 0
+  const requestedPageSize = filters?.pageSize ?? DEFAULT_PAGE_SIZE
+  const page = Number.isInteger(requestedPage) && requestedPage >= 0 ? requestedPage : 0
+  const pageSize = PAGE_SIZE_OPTIONS.includes(requestedPageSize as (typeof PAGE_SIZE_OPTIONS)[number])
+    ? requestedPageSize
+    : DEFAULT_PAGE_SIZE
+  const rangeStart = page * pageSize
+  const rangeEnd = rangeStart + pageSize - 1
 
   let query = supabase
     .from('patients')
     .select(`
-      *,
+      id,
+      organization_id,
+      first_name,
+      last_name,
+      date_of_birth,
+      status,
+      created_at,
+      created_by_user_id,
       created_by:user_profiles!patients_created_by_user_id_fkey(
         id,
         first_name,
         last_name
       )
-    `)
+    `, { count: 'exact' })
     .eq('organization_id', orgId)
 
   if (filters?.status) {
@@ -74,14 +91,19 @@ export async function listPatients(
     query = query.is('archived_at', null)
   }
 
-  const { data, error } = await query.order('created_at', { ascending: false })
+  const { data, error, count } = await query
+    .order('created_at', { ascending: false })
+    .range(rangeStart, rangeEnd)
 
   if (error) {
     console.error('[listPatients] query failed:', { orgId, filters, error })
-    return []
+    return { rows: [], rowCount: 0 }
   }
 
-  return (data ?? []) as PatientWithDates[]
+  return {
+    rows: (data ?? []) as PatientListPage['rows'],
+    rowCount: count ?? 0,
+  }
 }
 
 export async function getPatient(orgId: string, patientId: string): Promise<PatientWithDates | null> {
@@ -89,7 +111,14 @@ export async function getPatient(orgId: string, patientId: string): Promise<Pati
 
   const { data, error } = await supabase
     .from('patients')
-    .select('*')
+    .select(`
+      *,
+      created_by:user_profiles!patients_created_by_user_id_fkey(
+        id,
+        first_name,
+        last_name
+      )
+    `)
     .eq('id', patientId)
     .eq('organization_id', orgId)
     .single()
@@ -215,10 +244,11 @@ export async function archivePatient(
 export async function listPatientAddresses(
   orgId: string,
   patientId: string,
+  limit?: number,
 ): Promise<PatientAddress[]> {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('patient_addresses')
     .select('*')
     .eq('organization_id', orgId)
@@ -226,12 +256,42 @@ export async function listPatientAddresses(
     .eq('active', true)
     .order('created_at', { ascending: false })
 
+  if (limit !== undefined) {
+    query = query.limit(limit)
+  }
+
+  const { data, error } = await query
+
   if (error) {
     console.error('[listPatientAddresses] query failed:', { orgId, patientId, error })
     return []
   }
 
   return (data ?? []) as PatientAddress[]
+}
+
+export async function getPatientAddress(
+  orgId: string,
+  patientId: string,
+  addressId: string,
+): Promise<PatientAddress | null> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('patient_addresses')
+    .select('*')
+    .eq('id', addressId)
+    .eq('organization_id', orgId)
+    .eq('patient_id', patientId)
+    .eq('active', true)
+    .single()
+
+  if (error) {
+    console.error('[getPatientAddress] lookup failed:', { orgId, patientId, addressId, error })
+    return null
+  }
+
+  return data as PatientAddress
 }
 
 export async function upsertPatientAddress(
@@ -310,6 +370,7 @@ export async function listPatientRequirements(
   orgId: string,
   patientId: string,
   visibilityLevel?: VisibilityLevel,
+  limit?: number,
 ): Promise<PatientRequirement[]> {
   const supabase = await createClient()
 
@@ -332,7 +393,7 @@ export async function listPatientRequirements(
   }
 
   // For no visibility filter, return all active requirements
-  const { data, error } = await supabase
+  let query = supabase
     .from('patient_requirements')
     .select('*')
     .eq('organization_id', orgId)
@@ -340,12 +401,42 @@ export async function listPatientRequirements(
     .eq('active', true)
     .order('created_at', { ascending: true })
 
+  if (limit !== undefined) {
+    query = query.limit(limit)
+  }
+
+  const { data, error } = await query
+
   if (error) {
     console.error('[listPatientRequirements] query failed:', { orgId, patientId, error })
     return []
   }
 
   return (data ?? []) as PatientRequirement[]
+}
+
+export async function getPatientRequirement(
+  orgId: string,
+  patientId: string,
+  requirementId: string,
+): Promise<PatientRequirement | null> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('patient_requirements')
+    .select('*')
+    .eq('id', requirementId)
+    .eq('organization_id', orgId)
+    .eq('patient_id', patientId)
+    .eq('active', true)
+    .single()
+
+  if (error) {
+    console.error('[getPatientRequirement] lookup failed:', { orgId, patientId, requirementId, error })
+    return null
+  }
+
+  return data as PatientRequirement
 }
 
 export async function upsertPatientRequirement(
@@ -367,7 +458,7 @@ export async function upsertPatientRequirement(
     structured_value: data.structured_value ?? null,
     restricted_note_id: data.restricted_note_id ?? null,
     visibility_level: data.visibility_level,
-    effective_start_date: data.effective_start_date,
+    ...(data.effective_start_date ? { effective_start_date: data.effective_start_date } : {}),
     effective_end_date: data.effective_end_date ?? null,
   })
 
@@ -406,10 +497,11 @@ export async function deactivatePatientRequirement(
 export async function listPatientContacts(
   orgId: string,
   patientId: string,
+  limit?: number,
 ): Promise<PatientContact[]> {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('patient_contacts')
     .select('*')
     .eq('organization_id', orgId)
@@ -417,12 +509,42 @@ export async function listPatientContacts(
     .eq('active', true)
     .order('created_at', { ascending: true })
 
+  if (limit !== undefined) {
+    query = query.limit(limit)
+  }
+
+  const { data, error } = await query
+
   if (error) {
     console.error('[listPatientContacts] query failed:', { orgId, patientId, error })
     return []
   }
 
   return (data ?? []) as PatientContact[]
+}
+
+export async function getPatientContact(
+  orgId: string,
+  patientId: string,
+  contactId: string,
+): Promise<PatientContact | null> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('patient_contacts')
+    .select('*')
+    .eq('id', contactId)
+    .eq('organization_id', orgId)
+    .eq('patient_id', patientId)
+    .eq('active', true)
+    .single()
+
+  if (error) {
+    console.error('[getPatientContact] lookup failed:', { orgId, patientId, contactId, error })
+    return null
+  }
+
+  return data as PatientContact
 }
 
 export async function upsertPatientContact(

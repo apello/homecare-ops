@@ -2,8 +2,8 @@ import { redirect } from 'next/navigation'
 import Typography from '@mui/material/Typography'
 import { requireAuth, getActiveMembership } from '@/lib/auth/server'
 import { hasPermission } from '@/lib/permissions'
+import { getPatient, getPatientRequirement } from '@/lib/services/patients.service'
 import UnauthorizedMessage from '@/components/UnauthorizedMessage'
-import { getPatientAction, listPatientRequirementsAction } from '../../../../actions'
 import RequirementForm from '../../../../_components/RequirementForm'
 
 interface RequirementEditPageProps {
@@ -26,20 +26,14 @@ export default async function RequirementEditPage({ params }: RequirementEditPag
   const resolvedParams = await params
   const orgId = membership.organization_id
 
-  const [patientResult, requirementsResult] = await Promise.all([
-    getPatientAction(orgId, resolvedParams.patientId),
-    listPatientRequirementsAction(orgId, resolvedParams.patientId),
+  const [patient, requirement] = await Promise.all([
+    getPatient(orgId, resolvedParams.patientId),
+    getPatientRequirement(orgId, resolvedParams.patientId, resolvedParams.requirementId),
   ])
-
-  const patient = patientResult.success ? patientResult.data ?? null : null
 
   if (!patient) {
     return <Typography sx={{ p: 3 }}>Patient not found.</Typography>
   }
-
-  const requirement = (requirementsResult.success ? requirementsResult.data ?? [] : []).find(
-    (item) => item.id === resolvedParams.requirementId,
-  )
 
   if (!requirement) {
     return <Typography sx={{ p: 3 }}>Requirement not found.</Typography>

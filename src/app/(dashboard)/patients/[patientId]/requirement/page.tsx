@@ -2,8 +2,8 @@ import { redirect } from 'next/navigation'
 import Typography from '@mui/material/Typography'
 import { requireAuth, getActiveMembership } from '@/lib/auth/server'
 import { hasPermission } from '@/lib/permissions'
+import { getPatient, listPatientRequirements } from '@/lib/services/patients.service'
 import UnauthorizedMessage from '@/components/UnauthorizedMessage'
-import { getPatientAction, listPatientRequirementsAction } from '../../actions'
 import RequirementList from '../../_components/RequirementList'
 
 interface RequirementListPageProps {
@@ -25,12 +25,10 @@ export default async function RequirementListPage({ params }: RequirementListPag
   const resolvedParams = await params
   const orgId = membership.organization_id
 
-  const [patientResult, requirementsResult] = await Promise.all([
-    getPatientAction(orgId, resolvedParams.patientId),
-    listPatientRequirementsAction(orgId, resolvedParams.patientId),
+  const [patient, requirements] = await Promise.all([
+    getPatient(orgId, resolvedParams.patientId),
+    listPatientRequirements(orgId, resolvedParams.patientId),
   ])
-
-  const patient = patientResult.success ? patientResult.data ?? null : null
 
   if (!patient) {
     return <Typography sx={{ p: 3 }}>Patient not found.</Typography>
@@ -40,7 +38,7 @@ export default async function RequirementListPage({ params }: RequirementListPag
     <RequirementList
       patient={patient}
       orgId={orgId}
-      requirements={requirementsResult.success ? requirementsResult.data ?? [] : []}
+      requirements={requirements}
     />
   )
 }

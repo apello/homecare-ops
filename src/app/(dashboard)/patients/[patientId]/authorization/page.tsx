@@ -2,8 +2,8 @@ import { redirect } from 'next/navigation'
 import Typography from '@mui/material/Typography'
 import { requireAuth, getActiveMembership } from '@/lib/auth/server'
 import { hasPermission } from '@/lib/permissions'
+import { getPatient } from '@/lib/services/patients.service'
 import UnauthorizedMessage from '@/components/UnauthorizedMessage'
-import { getPatientAction } from '../../actions'
 
 interface AuthorizationPageProps {
   params: Promise<{
@@ -22,8 +22,7 @@ export default async function AuthorizationPage({ params }: AuthorizationPagePro
   }
 
   const resolvedParams = await params
-  const patientResult = await getPatientAction(membership.organization_id, resolvedParams.patientId)
-  const patient = patientResult.success ? patientResult.data ?? null : null
+  const patient = await getPatient(membership.organization_id, resolvedParams.patientId)
 
   if (!patient) {
     return <Typography sx={{ p: 3 }}>Patient not found.</Typography>

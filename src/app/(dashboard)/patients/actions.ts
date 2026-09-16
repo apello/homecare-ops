@@ -21,6 +21,7 @@ import type {
   PatientRequirement,
   PatientAddress,
   PatientContact,
+  PatientListPage,
   PatientStatus,
 } from '@/types'
 
@@ -28,8 +29,8 @@ import type {
 
 export async function listPatientsAction(
   orgId: string,
-  filters?: { status?: PatientStatus },
-): Promise<ActionResponse<Patient[]>> {
+  filters?: { status?: PatientStatus; page?: number; pageSize?: number },
+): Promise<ActionResponse<PatientListPage>> {
   try {
     await requireAuth()
     await requirePermission(orgId, 'patients.read_basic')

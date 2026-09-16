@@ -1,11 +1,19 @@
 import { redirect } from 'next/navigation'
 import { requireAuth, getActiveMembership } from '@/lib/auth/server'
 import { hasPermission } from '@/lib/permissions'
+import { parsePaginationSearchParams } from '@/lib/pagination'
 import { listPatients } from '@/lib/services/patients.service'
 import UnauthorizedMessage from '@/components/UnauthorizedMessage'
 import PatientList from './_components/PatientList'
 
-export default async function PatientsPage() {
+interface PatientsPageProps {
+  searchParams: Promise<{
+    page?: string | string[]
+    pageSize?: string | string[]
+  }>
+}
+
+export default async function PatientsPage({ searchParams }: PatientsPageProps) {
   await requireAuth()
   const membership = await getActiveMembership()
   if (!membership) redirect('/login')
@@ -15,11 +23,13 @@ export default async function PatientsPage() {
     return <UnauthorizedMessage />
   }
 
-  const initialPatients = await listPatients(membership.organization_id)
+  const paginationModel = parsePaginationSearchParams(await searchParams)
+  const initialPage = await listPatients(membership.organization_id, paginationModel)
   return (
     <PatientList
       orgId={membership.organization_id}
-      initialPatients={initialPatients}
+      initialPage={initialPage}
+      initialPaginationModel={paginationModel}
     />
   )
 }

@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
 import { requireAuth, getActiveMembership } from '@/lib/auth/server'
 import { hasPermission } from '@/lib/permissions'
+import { getPatient } from '@/lib/services/patients.service'
 import UnauthorizedMessage from '@/components/UnauthorizedMessage'
-import { getPatientAction } from '../../actions'
 import PatientEdit from '../../_components/PatientEdit'
 
 interface PatientEditPageProps {
@@ -22,8 +22,7 @@ export default async function PatientEditPage({ params }: PatientEditPageProps) 
   }
 
   const resolvedParams = await params
-  const result = await getPatientAction(membership.organization_id, resolvedParams.patientId)
-  const patient = result.success ? result.data ?? null : null
+  const patient = await getPatient(membership.organization_id, resolvedParams.patientId)
 
   return (
     <PatientEdit
