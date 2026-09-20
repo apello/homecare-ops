@@ -143,7 +143,8 @@ export default function PatientAddressList({ patient, orgId, addresses: initialA
   return (
     <PageContainer
       title="Addresses"
-      breadcrumbs={[
+       breadcrumbs={[
+        { title: 'Home', path: '/dashboard'},
         { title: 'Patients', path: '/patients' },
         { title: fullName || 'Patient', path: `/patients/${patient.id}` },
         { title: 'Addresses' },

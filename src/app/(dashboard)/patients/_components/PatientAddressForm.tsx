@@ -164,7 +164,8 @@ export default function PatientAddressForm({
   return (
     <PageContainer
       title={isEditing ? 'Edit Address' : 'Add Address'}
-      breadcrumbs={[
+       breadcrumbs={[
+        { title: 'Home', path: '/dashboard'},
         { title: 'Patients', path: '/patients' },
         { title: fullName || 'Patient', path: `/patients/${patient.id}` },
         { title: isEditing ? 'Edit Address' : 'Add Address' },

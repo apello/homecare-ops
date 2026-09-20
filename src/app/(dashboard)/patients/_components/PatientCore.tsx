@@ -266,7 +266,8 @@ export default function PatientCore({
   return (
     <PageContainer
       title="Patient Information"
-      breadcrumbs={[
+       breadcrumbs={[
+        { title: 'Home', path: '/dashboard'},
         { title: 'Patients', path: '/patients' },
         { title: fullName || 'Patient' },
       ]}

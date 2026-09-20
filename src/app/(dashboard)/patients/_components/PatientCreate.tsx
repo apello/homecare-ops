@@ -147,7 +147,8 @@ export default function PatientCreate({ orgId }: PatientCreateProps) {
   return (
     <PageContainer
       title="Create Patient"
-      breadcrumbs={[{ title: 'Patients', path: '/patients' }, { title: 'Create Patient' }]}
+       breadcrumbs={[
+        { title: 'Home', path: '/dashboard'},{ title: 'Patients', path: '/patients' }, { title: 'Create Patient' }]}
     >
       <Box sx={{ display: 'flex', width: '100%', flex: 1 }}>
         <PatientForm

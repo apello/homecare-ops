@@ -116,7 +116,8 @@ export default function MemberInvite({ orgId, initialInvites }: MemberInviteProp
   return (
     <PageContainer
       title="Invite User"
-      breadcrumbs={[
+       breadcrumbs={[
+        { title: 'Home', path: '/dashboard'},
         { title: 'Settings' },
         { title: 'Users', path: '/settings/users' },
         { title: 'Invite' },

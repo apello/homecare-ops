@@ -88,7 +88,8 @@ export default function MemberEdit({ member, orgId }: MemberEditProps) {
   return (
     <PageContainer
       title="Edit Member"
-      breadcrumbs={[
+       breadcrumbs={[
+        { title: 'Home', path: '/dashboard'},
         { title: 'Settings' },
         { title: 'Users', path: '/settings/users' },
         { title: 'Edit' },

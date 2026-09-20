@@ -221,7 +221,8 @@ export default function RequirementForm({ patient, orgId, requirement }: Require
   return (
     <PageContainer
       title={isEditing ? 'Edit Requirement' : 'Add Requirement'}
-      breadcrumbs={[
+       breadcrumbs={[
+        { title: 'Home', path: '/dashboard'},
         { title: 'Patients', path: '/patients' },
         { title: fullName || 'Patient', path: `/patients/${patient.id}` },
         { title: 'Requirements', path: `/patients/${patient.id}/requirement` },

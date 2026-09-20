@@ -150,7 +150,8 @@ export default function PatientEdit({ patient, orgId }: PatientEditProps) {
   return (
     <PageContainer
       title="Edit Patient Information"
-      breadcrumbs={[
+       breadcrumbs={[
+        { title: 'Home', path: '/dashboard'},
         { title: 'Patients', path: '/patients' },
         ...(patient ? [{ title: fullName || 'Patient', path: `/patients/${patient.id}` }] : []),
         { title: 'Edit Information' },

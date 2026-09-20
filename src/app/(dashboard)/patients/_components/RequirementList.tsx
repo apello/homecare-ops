@@ -154,7 +154,8 @@ export default function RequirementList({ patient, orgId, requirements: initialR
   return (
     <PageContainer
       title="Requirements"
-      breadcrumbs={[
+       breadcrumbs={[
+        { title: 'Home', path: '/dashboard'},
         { title: 'Patients', path: '/patients' },
         { title: fullName || 'Patient', path: `/patients/${patient.id}` },
         { title: 'Requirements' },
