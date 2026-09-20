@@ -6,6 +6,7 @@ import HomeIcon from '@mui/icons-material/Home';
 import LogoutIcon from '@mui/icons-material/Logout';
 import CssBaseline from '@mui/material/CssBaseline';
 import AccessibleIcon from '@mui/icons-material/Accessible';
+import BadgeIcon from '@mui/icons-material/Badge';
 
 import DashboardLayout from '@/components/templates/crud-dashboard/components/DashboardLayout';
 import NotificationsProvider from '@/components/templates/crud-dashboard/hooks/useNotifications/NotificationsProvider';
@@ -35,6 +36,13 @@ const navigation: NavigationItem[] = [
     title: 'Patients',
     icon: <AccessibleIcon />,
     href: '/patients',
+  },
+  {
+    kind: 'page',
+    id: 'caregivers',
+    title: 'Caregivers',
+    icon: <BadgeIcon />,
+    href: '/caregivers',
   },
   { kind: 'header', title: 'Settings' },
   {

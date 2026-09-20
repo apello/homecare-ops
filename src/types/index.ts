@@ -69,13 +69,29 @@ export type QuantityPeriod = 'Day' | 'Week' | 'Month' | 'Authorization Period'
 
 export type RateUnit = 'Hour' | 'Visit' | 'Unit'
 
-export type CaregiverClassification = 'RN' | 'LPN' | 'HHA' | 'STNA'
+export const CAREGIVER_CLASSIFICATIONS = ['RN', 'LPN', 'HHA', 'STNA'] as const
+
+export type CaregiverClassification = (typeof CAREGIVER_CLASSIFICATIONS)[number]
 
 export type CaregiverEmploymentStatus = 'Active' | 'Inactive' | 'Suspended' | 'Terminated'
 
 export type CaregiverMatchingStatus = 'Active' | 'Inactive' | 'Suspended'
 
 export type CredentialStatus = 'Active' | 'Expired' | 'Pending' | 'Revoked'
+
+// `caregiver_credentials.credential_type` is free text in SQL — the app constrains it.
+export const CREDENTIAL_TYPES = [
+  'License',
+  'Certification',
+  'Background Check',
+  'CPR',
+  'TB Test',
+  'Other',
+] as const
+
+export type CredentialType = (typeof CREDENTIAL_TYPES)[number]
+
+export type CredentialHealth = 'OK' | 'Expiring Soon' | 'Expired' | 'Missing'
 
 export type AvailabilityStatus = 'Available' | 'Unavailable' | 'Preferred'
 
@@ -213,6 +229,20 @@ export type UserProfile = {
 
 export type OrgMemberWithProfile = OrganizationMembership & {
   profile: Pick<UserProfile, 'id' | 'first_name' | 'last_name' | 'access_status'> | null
+}
+
+// List-only projection: just the columns the users grid renders, so the page
+// never selects the full membership row for a table it only paginates through.
+export type OrgMemberListItem = Pick<
+  OrganizationMembership,
+  'id' | 'organization_id' | 'user_id' | 'roles' | 'status' | 'joined_at'
+> & {
+  profile: Pick<UserProfile, 'id' | 'first_name' | 'last_name' | 'access_status'> | null
+}
+
+export type OrgMemberListPage = {
+  rows: OrgMemberListItem[]
+  rowCount: number
 }
 
 export type PlatformUserRole = {
@@ -571,20 +601,6 @@ export type CaregiverAvailability = {
   updated_at: string | null
 }
 
-export type CaregiverAvailabilityException = {
-  id: string
-  organization_id: string
-  caregiver_id: string
-  exception_date: string
-  start_time: string | null
-  end_time: string | null
-  availability_status: 'Available' | 'Unavailable'
-  reason_code: string | null
-  created_at: string
-  created_by_user_id: string
-  updated_at: string | null
-}
-
 export type CaregiverConstraint = {
   id: string
   organization_id: string
@@ -596,6 +612,44 @@ export type CaregiverConstraint = {
   active: boolean
   created_at: string
   updated_at: string | null
+}
+
+export type CaregiverCredentialSummary = Pick<
+  CaregiverCredential,
+  'id' | 'credential_type' | 'expiration_date' | 'status'
+>
+
+export type CaregiverWithCredentialSummary = Caregiver & {
+  credentials: CaregiverCredentialSummary[]
+}
+
+export type CaregiverListItem = Pick<
+  Caregiver,
+  | 'id'
+  | 'organization_id'
+  | 'first_name'
+  | 'last_name'
+  | 'classification'
+  | 'employment_status'
+  | 'matching_status'
+  | 'service_area_zip'
+  | 'created_at'
+  | 'archived_at'
+> & {
+  credentials: CaregiverCredentialSummary[]
+}
+
+export type CaregiverListPage = {
+  rows: CaregiverListItem[]
+  rowCount: number
+}
+
+export type CaregiverServiceEligibilityWithService = CaregiverServiceEligibility & {
+  organization_service: {
+    id: string
+    local_service_name: string | null
+    service_code_mapping: { evv_service_name: string } | null
+  } | null
 }
 
 // ─── Scheduling and matching ──────────────────────────────────────────────────
@@ -804,7 +858,6 @@ export type Database = {
       caregiver_service_eligibility:      TableDef<CaregiverServiceEligibility>
       caregiver_skills:                   TableDef<CaregiverSkill>
       caregiver_availability:             TableDef<CaregiverAvailability>
-      caregiver_availability_exceptions:  TableDef<CaregiverAvailabilityException>
       caregiver_constraints:              TableDef<CaregiverConstraint>
       shifts:                             TableDef<Shift>
       shift_assignment_history:           TableDef<ShiftAssignmentHistory>
@@ -870,6 +923,48 @@ export type Database = {
         Args: { target_org_id: string; target_patient_id: string; target_visibility?: VisibilityLevel }
         Returns: PatientRequirement[]
       }
+      can_manage_org_caregivers: { Args: { org_id: string }; Returns: boolean }
+      can_read_org_compensation:  { Args: { org_id: string }; Returns: boolean }
+      create_caregiver: {
+        Args: {
+          target_org_id: string
+          first_name: string
+          last_name: string
+          classification: CaregiverClassification
+          email?: string | null
+          phone?: string | null
+          employee_external_id?: string | null
+          max_hours_per_week?: number | null
+          service_area_zip?: string | null
+          travel_radius_miles?: number | null
+        }
+        Returns: Caregiver
+      }
+      upsert_caregiver_availability: {
+        Args: {
+          target_org_id: string
+          target_caregiver_id: string
+          day_of_week: number
+          start_time: string
+          end_time: string
+          availability_status: AvailabilityStatus
+          effective_start_date: string
+          effective_end_date?: string | null
+        }
+        Returns: CaregiverAvailability
+      }
+      set_caregiver_compensation_rate: {
+        Args: {
+          target_org_id: string
+          target_caregiver_id: string
+          pay_rate: number
+          rate_unit: RateUnit
+          effective_start_date: string
+          organization_service_id?: string | null
+        }
+        Returns: CaregiverCompensationRate
+      }
+      mark_expired_credentials: { Args: { target_org_id: string }; Returns: number }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
