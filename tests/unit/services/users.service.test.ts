@@ -27,7 +27,9 @@ function makeSupabase(overrides: Record<string, unknown> = {}) {
     from: vi.fn().mockReturnThis(),
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
+    neq: vi.fn().mockReturnThis(),
     order: vi.fn().mockReturnThis(),
+    range: vi.fn(),
     single: vi.fn(),
     rpc: vi.fn(),
     ...overrides,
@@ -55,21 +57,45 @@ const OTHER_USER_ID = 'other-uuid'
 describe('listOrgMembers', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('returns members on success', async () => {
+  it('returns a page of members and excludes Pending profiles in the query', async () => {
     const rows = [{ id: MEMBERSHIP_ID, profile: { id: USER_ID } }]
     const supabase = makeSupabase()
-    supabase.order.mockResolvedValue({ data: rows, error: null })
+    supabase.order.mockReturnValue(supabase)
+    supabase.range.mockResolvedValue({ data: rows, error: null, count: 1 })
 
     const result = await listOrgMembers(ORG_ID)
-    expect(result).toEqual(rows)
+    expect(result).toEqual({ rows, rowCount: 1 })
+    expect(supabase.from).toHaveBeenCalledWith('organization_memberships')
+    expect(supabase.eq).toHaveBeenCalledWith('organization_id', ORG_ID)
+    expect(supabase.neq).toHaveBeenCalledWith('profile.access_status', 'Pending')
+    expect(supabase.range).toHaveBeenCalledWith(0, 9)
   })
 
-  it('returns empty array on error', async () => {
+  it('applies pagination filters', async () => {
     const supabase = makeSupabase()
-    supabase.order.mockResolvedValue({ data: null, error: { message: 'db error' } })
+    supabase.order.mockReturnValue(supabase)
+    supabase.range.mockResolvedValue({ data: [], error: null, count: 0 })
+
+    await listOrgMembers(ORG_ID, { page: 2, pageSize: 25 })
+    expect(supabase.range).toHaveBeenCalledWith(50, 74)
+  })
+
+  it('falls back to safe defaults for out-of-range pagination input', async () => {
+    const supabase = makeSupabase()
+    supabase.order.mockReturnValue(supabase)
+    supabase.range.mockResolvedValue({ data: [], error: null, count: 0 })
+
+    await listOrgMembers(ORG_ID, { page: -3, pageSize: 999 })
+    expect(supabase.range).toHaveBeenCalledWith(0, 9)
+  })
+
+  it('returns an empty page on error', async () => {
+    const supabase = makeSupabase()
+    supabase.order.mockReturnValue(supabase)
+    supabase.range.mockResolvedValue({ data: null, error: { message: 'db error' }, count: null })
 
     const result = await listOrgMembers(ORG_ID)
-    expect(result).toEqual([])
+    expect(result).toEqual({ rows: [], rowCount: 0 })
   })
 })
 

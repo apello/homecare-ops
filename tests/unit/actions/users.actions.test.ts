@@ -61,12 +61,18 @@ beforeEach(() => {
 // ─── listMembersAction ────────────────────────────────────────────────────────
 
 describe('listMembersAction', () => {
-  it('returns members on success', async () => {
-    const rows = [{ id: MEMBERSHIP_ID }]
-    mockListOrgMembers.mockResolvedValue(rows)
+  it('returns a page of members on success', async () => {
+    const page = { rows: [{ id: MEMBERSHIP_ID }], rowCount: 1 }
+    mockListOrgMembers.mockResolvedValue(page)
     const result = await listMembersAction(ORG_ID)
     expect(result.success).toBe(true)
-    expect(result.data).toEqual(rows)
+    expect(result.data).toEqual(page)
+  })
+
+  it('forwards pagination filters to the service', async () => {
+    mockListOrgMembers.mockResolvedValue({ rows: [], rowCount: 0 })
+    await listMembersAction(ORG_ID, { page: 2, pageSize: 25 })
+    expect(mockListOrgMembers).toHaveBeenCalledWith(ORG_ID, { page: 2, pageSize: 25 })
   })
 
   it('returns error when unauthenticated', async () => {
