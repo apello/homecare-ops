@@ -5,7 +5,7 @@ import { requireAuth } from '@/lib/auth/server'
 import { requirePermission } from '@/lib/permissions'
 import { InviteUserSchema, SetRolesSchema } from '@/lib/schemas/users.schema'
 import * as usersService from '@/lib/services/users.service'
-import type { ActionResponse, OrgRole, OrgMemberWithProfile, PendingInvite } from '@/types'
+import type { ActionResponse, OrgRole, OrgMemberListPage, OrgMemberWithProfile, PendingInvite } from '@/types'
 
 export async function getMemberAction(orgId: string, membershipId: string): Promise<ActionResponse<OrgMemberWithProfile | null>> {
   try {
@@ -19,14 +19,17 @@ export async function getMemberAction(orgId: string, membershipId: string): Prom
   }
 }
 
-export async function listMembersAction(orgId: string): Promise<ActionResponse<OrgMemberWithProfile[]>> {
+export async function listMembersAction(
+  orgId: string,
+  filters?: { page?: number; pageSize?: number },
+): Promise<ActionResponse<OrgMemberListPage>> {
   try {
     await requireAuth()
     await requirePermission(orgId, 'users.manage')
-    const data = await usersService.listOrgMembers(orgId)
+    const data = await usersService.listOrgMembers(orgId, filters)
     return { success: true, data }
   } catch (err) {
-    console.error('[listMembersAction] failed:', { orgId, error: err })
+    console.error('[listMembersAction] failed:', { orgId, filters, error: err })
     return { success: false, error: 'Not authorized.' }
   }
 }

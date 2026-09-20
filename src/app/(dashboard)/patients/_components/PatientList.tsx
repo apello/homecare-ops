@@ -24,7 +24,8 @@ import { useRouter } from 'next/navigation'
 import { useDialogs } from '@/components/templates/crud-dashboard/hooks/useDialogs/useDialogs'
 import useNotifications from '@/components/templates/crud-dashboard/hooks/useNotifications/useNotifications'
 import PageContainer from '@/components/templates/crud-dashboard/components/PageContainer'
-import { PAGE_SIZE_OPTIONS, replacePaginationSearchParams } from '@/lib/pagination'
+import useServerPagination from '@/components/shared/useServerPagination'
+import { PAGE_SIZE_OPTIONS } from '@/lib/pagination'
 import type { PatientListItem, PatientListPage } from '@/types'
 import { listPatientsAction, archivePatientAction } from '../actions'
 
@@ -55,39 +56,33 @@ export default function PatientList({ orgId, initialPage, initialPaginationModel
   const router = useRouter()
   const dialogs = useDialogs()
   const notifications = useNotifications()
+  const [isArchiving, setIsArchiving] = React.useState(false)
 
-  const [patients, setPatients] = React.useState<PatientListItem[]>(initialPage.rows)
-  const [rowCount, setRowCount] = React.useState(initialPage.rowCount)
-  const [paginationModel, setPaginationModel] = React.useState<GridPaginationModel>(initialPaginationModel)
-  const [isLoading, setIsLoading] = React.useState(false)
-  const [error, setError] = React.useState<Error | null>(null)
-
-  const loadData = React.useCallback(async (model: GridPaginationModel = paginationModel) => {
-    setError(null)
-    setIsLoading(true)
-
-    try {
-      const result = await listPatientsAction(orgId, {
+  const {
+    rows: patients,
+    rowCount,
+    paginationModel,
+    isLoading: isFetching,
+    error,
+    onPaginationModelChange,
+    reload,
+  } = useServerPagination<PatientListItem, Record<string, never>>({
+    initialPage,
+    initialPaginationModel,
+    initialFilters: {},
+    errorMessage: 'Failed to load patients.',
+    fetchPage: (model) =>
+      listPatientsAction(orgId, {
         page: model.page,
         pageSize: model.pageSize,
-      })
+      }),
+  })
 
-      if (!result.success) {
-        throw new Error(result.error ?? 'Failed to load patients.')
-      }
-
-      setPatients(result.data?.rows ?? [])
-      setRowCount(result.data?.rowCount ?? 0)
-    } catch (err) {
-      setError(err as Error)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [orgId, paginationModel])
+  const isLoading = isFetching || isArchiving
 
   const handleRefresh = React.useCallback(() => {
-    if (!isLoading) loadData()
-  }, [isLoading, loadData])
+    if (!isLoading) reload()
+  }, [isLoading, reload])
 
   const handleCreateClick = () => router.push('/patients/create')
 
@@ -110,7 +105,7 @@ export default function PatientList({ orgId, initialPage, initialPaginationModel
 
       if (!confirmed) return
 
-      setIsLoading(true)
+      setIsArchiving(true)
 
       try {
         const result = await archivePatientAction({
@@ -131,12 +126,12 @@ export default function PatientList({ orgId, initialPage, initialPaginationModel
           autoHideDuration: 3000,
         })
 
-        await loadData()
+        reload()
       } finally {
-        setIsLoading(false)
+        setIsArchiving(false)
       }
     },
-    [dialogs, notifications, orgId, loadData],
+    [dialogs, notifications, orgId, reload],
   )
 
   const columns = React.useMemo<GridColDef<PatientListItem>[]>(
@@ -218,7 +213,10 @@ export default function PatientList({ orgId, initialPage, initialPaginationModel
   return (
     <PageContainer
       title="Patients"
-      breadcrumbs={[{ title: 'Patients' }]}
+       breadcrumbs={[
+        { title: 'Home', path: '/dashboard'},
+        {title: 'Patients' },
+      ]}
       actions={
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
           <Tooltip title="Reload data" placement="right" enterDelay={1000}>
@@ -247,15 +245,7 @@ export default function PatientList({ orgId, initialPage, initialPaginationModel
             paginationMode="server"
             rowCount={rowCount}
             paginationModel={paginationModel}
-            onPaginationModelChange={(model) => {
-              setPaginationModel(model)
-              window.history.replaceState(
-                window.history.state,
-                '',
-                replacePaginationSearchParams(window.location.href, model),
-              )
-              void loadData(model)
-            }}
+            onPaginationModelChange={onPaginationModelChange}
             pageSizeOptions={[...PAGE_SIZE_OPTIONS]}
             sx={{
               opacity: isLoading ? 0.5 : 1,

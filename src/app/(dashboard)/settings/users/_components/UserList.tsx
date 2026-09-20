@@ -14,6 +14,7 @@ import {
   DataGrid,
   GridActionsCellItem,
   GridColDef,
+  GridPaginationModel,
   gridClasses,
 } from '@mui/x-data-grid';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -26,7 +27,9 @@ import { useRouter } from 'next/navigation';
 import { useDialogs } from '@/components/templates/crud-dashboard/hooks/useDialogs/useDialogs';
 import useNotifications from '@/components/templates/crud-dashboard/hooks/useNotifications/useNotifications';
 import PageContainer from '@/components/templates/crud-dashboard/components/PageContainer';
-import type { OrgMemberWithProfile } from '@/types';
+import useServerPagination from '@/components/shared/useServerPagination';
+import { PAGE_SIZE_OPTIONS } from '@/lib/pagination';
+import type { OrgMemberListItem, OrgMemberListPage } from '@/types';
 import { listMembersAction, suspendMemberAction, unsuspendMemberAction, revokeMemberAction } from '../actions';
 
 const STATUS_COLOR: Record<string, 'success' | 'warning' | 'default'> = {
@@ -38,52 +41,58 @@ const STATUS_COLOR: Record<string, 'success' | 'warning' | 'default'> = {
 export interface UserListProps {
   orgId: string;
   currentUserId: string;
-  initialMembers: OrgMemberWithProfile[];
+  initialPage: OrgMemberListPage;
+  initialPaginationModel: GridPaginationModel;
 }
 
-export default function UserList({ orgId, currentUserId, initialMembers }: UserListProps) {
+export default function UserList({
+  orgId,
+  currentUserId,
+  initialPage,
+  initialPaginationModel,
+}: UserListProps) {
   const router = useRouter();
   const dialogs = useDialogs();
   const notifications = useNotifications();
+  const [isMutating, setIsMutating] = React.useState(false);
 
-  const [members, setMembers] = React.useState<OrgMemberWithProfile[]>(initialMembers);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [error, setError] = React.useState<Error | null>(null);
+  const {
+    rows: members,
+    rowCount,
+    paginationModel,
+    isLoading: isFetching,
+    error,
+    onPaginationModelChange,
+    reload,
+  } = useServerPagination<OrgMemberListItem, Record<string, never>>({
+    initialPage,
+    initialPaginationModel,
+    initialFilters: {},
+    errorMessage: 'Failed to load members.',
+    fetchPage: (model) =>
+      listMembersAction(orgId, {
+        page: model.page,
+        pageSize: model.pageSize,
+      }),
+  });
 
-  const loadData = React.useCallback(async () => {
-    setError(null);
-    setIsLoading(true);
-
-    try {
-      const result = await listMembersAction(orgId);
-
-      if (!result.success) {
-        throw new Error(result.error ?? 'Failed to load members.');
-      }
-
-      setMembers(result.data ?? []);
-    } catch (err) {
-      setError(err as Error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [orgId]);
+  const isLoading = isFetching || isMutating;
 
   const handleRefresh = React.useCallback(() => {
-    if (!isLoading) loadData();
-  }, [isLoading, loadData]);
+    if (!isLoading) reload();
+  }, [isLoading, reload]);
 
   const handleCreateClick = () => router.push('/settings/users/invite');
 
   const handleRowEdit = React.useCallback(
-    (member: OrgMemberWithProfile) => () => {
+    (member: OrgMemberListItem) => () => {
       router.push(`/settings/users/${member.id}/edit`);
     },
     [router],
   );
 
   const handleRowSuspend = React.useCallback(
-    (member: OrgMemberWithProfile) => async () => {
+    (member: OrgMemberListItem) => async () => {
       const fullName =
         `${member.profile?.first_name ?? ''} ${member.profile?.last_name ?? ''}`.trim() || 'this user';
 
@@ -95,7 +104,7 @@ export default function UserList({ orgId, currentUserId, initialMembers }: UserL
 
       if (!confirmed) return;
 
-      setIsLoading(true);
+      setIsMutating(true);
 
       try {
         const result = await suspendMemberAction({
@@ -116,16 +125,16 @@ export default function UserList({ orgId, currentUserId, initialMembers }: UserL
           autoHideDuration: 3000,
         });
 
-        await loadData();
+        reload();
       } finally {
-        setIsLoading(false);
+        setIsMutating(false);
       }
     },
-    [dialogs, notifications, orgId, loadData],
+    [dialogs, notifications, orgId, reload],
   );
 
   const handleRowUnsuspend = React.useCallback(
-    (member: OrgMemberWithProfile) => async () => {
+    (member: OrgMemberListItem) => async () => {
       const fullName =
         `${member.profile?.first_name ?? ''} ${member.profile?.last_name ?? ''}`.trim() || 'this user';
 
@@ -137,7 +146,7 @@ export default function UserList({ orgId, currentUserId, initialMembers }: UserL
 
       if (!confirmed) return;
 
-      setIsLoading(true);
+      setIsMutating(true);
 
       try {
         const result = await unsuspendMemberAction({
@@ -158,16 +167,16 @@ export default function UserList({ orgId, currentUserId, initialMembers }: UserL
           autoHideDuration: 3000,
         });
 
-        await loadData();
+        reload();
       } finally {
-        setIsLoading(false);
+        setIsMutating(false);
       }
     },
-    [dialogs, notifications, orgId, loadData],
+    [dialogs, notifications, orgId, reload],
   );
 
   const handleRowRevoke = React.useCallback(
-    (member: OrgMemberWithProfile) => async () => {
+    (member: OrgMemberListItem) => async () => {
       const fullName =
         `${member.profile?.first_name ?? ''} ${member.profile?.last_name ?? ''}`.trim() || 'this user';
       const confirmed = await dialogs.confirm(`Revoke access for ${fullName}? This cannot be undone.`, {
@@ -177,21 +186,21 @@ export default function UserList({ orgId, currentUserId, initialMembers }: UserL
       });
       if (!confirmed) return;
 
-      setIsLoading(true);
+      setIsMutating(true);
       const result = await revokeMemberAction({ organizationId: orgId, membershipId: member.id });
-      setIsLoading(false);
+      setIsMutating(false);
 
       if (!result.success) {
         notifications.show(result.error, { severity: 'error', autoHideDuration: 4000 });
         return;
       }
       notifications.show('Access revoked.', { severity: 'success', autoHideDuration: 3000 });
-      loadData();
+      reload();
     },
-    [dialogs, notifications, orgId, loadData],
+    [dialogs, notifications, orgId, reload],
   );
 
-  const columns = React.useMemo<GridColDef<OrgMemberWithProfile>[]>(
+  const columns = React.useMemo<GridColDef<OrgMemberListItem>[]>(
     () => [
       {
         field: 'name',
@@ -297,7 +306,8 @@ export default function UserList({ orgId, currentUserId, initialMembers }: UserL
   return (
     <PageContainer
       title="Users"
-      breadcrumbs={[{ title: 'Settings' }, { title: 'Users' }]}
+       breadcrumbs={[
+        { title: 'Home', path: '/dashboard'},{ title: 'Settings' }, { title: 'Users' }]}
       actions={
         <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
           <Tooltip title="Reload data" placement="right" enterDelay={1000}>
@@ -323,8 +333,11 @@ export default function UserList({ orgId, currentUserId, initialMembers }: UserL
             columns={columns}
             disableRowSelectionOnClick
             showToolbar
-            initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-            pageSizeOptions={[5, 10, 25]}
+            paginationMode="server"
+            rowCount={rowCount}
+            paginationModel={paginationModel}
+            onPaginationModelChange={onPaginationModelChange}
+            pageSizeOptions={[...PAGE_SIZE_OPTIONS]}
             sx={{
               opacity: isLoading ? 0.5 : 1,
               transition: 'opacity 0.2s',

@@ -1,6 +1,13 @@
 import { createClient } from '@/lib/db/client'
 import { createAdminClient } from '@/lib/db/admin'
-import type { OrgMemberWithProfile, OrgRole, OrganizationMembership, PendingInvite } from '@/types'
+import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from '@/lib/pagination'
+import type {
+  OrgMemberListPage,
+  OrgMemberWithProfile,
+  OrgRole,
+  OrganizationMembership,
+  PendingInvite,
+} from '@/types'
 
 type MembershipAccessCheck = Pick<
   OrganizationMembership,
@@ -32,29 +39,59 @@ export async function getMember(orgId: string, membershipId: string): Promise<Or
   return data as unknown as OrgMemberWithProfile
 }
 
-export async function listOrgMembers(orgId: string): Promise<OrgMemberWithProfile[]> {
+export async function listOrgMembers(
+  orgId: string,
+  filters?: { page?: number; pageSize?: number },
+): Promise<OrgMemberListPage> {
   const supabase = await createClient()
+  const requestedPage = filters?.page ?? 0
+  const requestedPageSize = filters?.pageSize ?? DEFAULT_PAGE_SIZE
+  const page = Number.isInteger(requestedPage) && requestedPage >= 0 ? requestedPage : 0
+  const pageSize = PAGE_SIZE_OPTIONS.includes(requestedPageSize as (typeof PAGE_SIZE_OPTIONS)[number])
+    ? requestedPageSize
+    : DEFAULT_PAGE_SIZE
+  const rangeStart = page * pageSize
+  const rangeEnd = rangeStart + pageSize - 1
 
-  const { data, error } = await supabase
+  // `!inner` + a filter on the embedded column excludes Pending users in the
+  // database. This filter used to run in JS after the fetch, which cannot work
+  // with server pagination: the exact count would include Pending rows and each
+  // page would render fewer than pageSize of them. Both columns are NOT NULL
+  // (memberships.user_id FKs user_profiles, profiles.access_status defaults
+  // 'Pending'), so the inner join drops nothing the JS filter kept.
+  const { data, error, count } = await supabase
     .from('organization_memberships')
     .select(`
-      *,
-      profile:user_profiles!organization_memberships_user_id_fkey(
+      id,
+      organization_id,
+      user_id,
+      roles,
+      status,
+      joined_at,
+      profile:user_profiles!organization_memberships_user_id_fkey!inner(
         id,
         first_name,
         last_name,
         access_status
       )
-    `)
+    `, { count: 'exact' })
     .eq('organization_id', orgId)
+    .neq('profile.access_status', 'Pending')
     .order('joined_at', { ascending: false })
+    // Tiebreaker: joined_at is not unique, and without a stable secondary sort
+    // rows can repeat or vanish across page boundaries.
+    .order('id', { ascending: false })
+    .range(rangeStart, rangeEnd)
 
   if (error) {
-    console.error('[listOrgMembers] query failed:', { orgId, error })
-    return []
+    console.error('[listOrgMembers] query failed:', { orgId, filters, error })
+    return { rows: [], rowCount: 0 }
   }
 
-  return (data as unknown as OrgMemberWithProfile[]).filter(m => m.profile?.access_status !== 'Pending')
+  return {
+    rows: (data ?? []) as unknown as OrgMemberListPage['rows'],
+    rowCount: count ?? 0,
+  }
 }
 
 export async function inviteUser(orgId: string, email: string, roles: OrgRole[]): Promise<void> {
