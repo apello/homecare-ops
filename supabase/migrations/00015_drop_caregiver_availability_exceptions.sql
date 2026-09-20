@@ -1,0 +1,21 @@
+-- ============================================================
+-- Migration: Drop caregiver availability exceptions
+-- Purpose:
+-- - Remove the caregiver_availability_exceptions feature entirely
+--   (redundant with caregiver_availability effective date ranges)
+-- - Drops the table together with its index and RLS policies
+--
+-- DESTRUCTIVE / IRREVERSIBLE: any rows in this table are lost.
+-- No other table references it (it is a leaf child of caregivers), so the
+-- drop is intentionally RESTRICT (no cascade) — it will fail loudly if some
+-- object unexpectedly depends on it.
+--
+-- Dropped with the table:
+-- - index  cg_avail_exc_caregiver_idx
+-- - policy "caregiver_availability_exceptions: read with caregivers, shifts, or matching"
+-- - policy "caregiver_availability_exceptions: insert with caregivers.manage"
+-- - policy "caregiver_availability_exceptions: update with caregivers.manage"
+-- - column active (added in 00014)
+-- ============================================================
+
+drop table if exists public.caregiver_availability_exceptions;
