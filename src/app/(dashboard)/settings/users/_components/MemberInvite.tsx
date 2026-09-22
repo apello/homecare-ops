@@ -183,7 +183,7 @@ export default function MemberInvite({ orgId, initialInvites }: MemberInviteProp
             <Stack spacing={1.5}>
               {ORG_ROLES.map((role) => (
                 <Box key={role}>
-                  <Typography variant="body2" fontWeight={600} gutterBottom>
+                  <Typography variant="body2" gutterBottom sx={{ fontWeight: 600 }}>
                     {role}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">

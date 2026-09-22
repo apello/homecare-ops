@@ -180,12 +180,12 @@ export default function InviteList({ orgId, initialInvites }: InviteListProps) {
           getRowId={(row) => row.invite_id}
           columns={columns}
           getRowHeight={() => 'auto'}
-          rowMinHeight={52}
           disableRowSelectionOnClick
           hideFooter={invites.length <= 10}
           sx={{
             opacity: isLoading ? 0.5 : 1,
             transition: 'opacity 0.2s',
+            [`& .${gridClasses.row}`]: { minHeight: '52px' },
             [`& .${gridClasses.columnHeader}, & .${gridClasses.cell}`]: { outline: 'transparent' },
             [`& .${gridClasses.columnHeader}:focus-within, & .${gridClasses.cell}:focus-within`]: {
               outline: 'none',

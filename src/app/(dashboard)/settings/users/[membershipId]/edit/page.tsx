@@ -25,7 +25,6 @@ export default async function MemberEditPage({ params }: PageProps) {
     <MemberEdit
       member={result.data ?? null}
       orgId={membership.organization_id}
-      membershipId={membershipId}
     />
   );
 }

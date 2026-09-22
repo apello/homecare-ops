@@ -97,7 +97,7 @@ export default function MemberForm({
       sx={{ width: '100%'}}
     >
       <Stack spacing={3}>
-        <Typography variant="subtitle2" fontWeight={600} color="info.dark">
+        <Typography variant="subtitle2" color="info.dark" sx={{ fontWeight: 600 }}>
             Member Information
           </Typography>
         <Box
@@ -119,32 +119,32 @@ export default function MemberForm({
               }}
             >
               <Box>
-                <Typography variant="caption" color="text.secondary" display="block" fontWeight={500}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 500 }}>
                   Member
                 </Typography>
                 <Typography variant="body2">{memberName}</Typography>
               </Box>
               <Box>
-                <Typography variant="caption" color="text.secondary" display="block" fontWeight={500}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 500 }}>
                   Membership Status
                 </Typography>
                 <Typography variant="body2">{member.status}</Typography>
               </Box>
               <Box>
-                <Typography variant="caption" color="text.secondary" display="block" fontWeight={500}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 500 }}>
                   Access Status
                 </Typography>
                 <Typography variant="body2">{member.profile?.access_status ?? '—'}</Typography>
               </Box>
               <Box>
-                <Typography variant="caption" color="text.secondary" display="block" fontWeight={500}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 500 }}>
                   Joined
                 </Typography>
                 <Typography variant="body2">{formatDate(member.joined_at)}</Typography>
               </Box>
               {member.last_access_review_at && (
                 <Box>
-                  <Typography variant="caption" color="text.secondary" display="block" fontWeight={500}>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 500 }}>
                     Last Access Review
                   </Typography>
                   <Typography variant="body2">{formatDate(member.last_access_review_at)}</Typography>
@@ -152,7 +152,7 @@ export default function MemberForm({
               )}
               {member.disabled_at && (
                 <Box>
-                  <Typography variant="caption" color="text.secondary" display="block" fontWeight={500}>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 500 }}>
                     Disabled
                   </Typography>
                   <Typography variant="body2">{formatDate(member.disabled_at)}</Typography>
@@ -200,7 +200,7 @@ export default function MemberForm({
           <Stack spacing={1.5}>
             {ORG_ROLES.map((role) => (
               <Box key={role}>
-                <Typography variant="body2" fontWeight={600} gutterBottom>
+                <Typography variant="body2" gutterBottom sx={{ fontWeight: 600 }}>
                   {role}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
