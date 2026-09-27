@@ -10,5 +10,6 @@ export type NavigationItem =
       title: string;
       icon?: React.ReactNode;
       href: string;
+      prefetch?: boolean;
       children?: NavigationItem[];
     };

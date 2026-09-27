@@ -58,6 +58,7 @@ const navigation: NavigationItem[] = [
     title: 'Logout',
     icon: <LogoutIcon />,
     href: '/logout',
+    prefetch: false,
   },
 ];
 

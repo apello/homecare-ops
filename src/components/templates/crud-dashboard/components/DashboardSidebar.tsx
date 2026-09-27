@@ -125,6 +125,7 @@ export default function DashboardSidebar({
             title={item.title}
             icon={item.icon}
             href={item.href}
+            prefetch={item.prefetch}
             selected={!!selected}
             defaultExpanded={!!selected}
             expanded={expandedItemIds.includes(item.id)}

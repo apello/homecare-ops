@@ -23,6 +23,7 @@ export interface DashboardSidebarPageItemProps {
   title: string;
   icon?: React.ReactNode;
   href: string;
+  prefetch?: boolean;
   action?: React.ReactNode;
   defaultExpanded?: boolean;
   expanded?: boolean;
@@ -36,6 +37,7 @@ export default function DashboardSidebarPageItem({
   title,
   icon,
   href,
+  prefetch,
   action,
   defaultExpanded = false,
   expanded = defaultExpanded,
@@ -123,6 +125,7 @@ export default function DashboardSidebarPageItem({
                   ? { target: '_blank', rel: 'noopener noreferrer' }
                   : {}),
                 href,
+                ...(prefetch === false ? { prefetch: false } : {}),
                 onClick: handleClick,
               }
             : {})}
