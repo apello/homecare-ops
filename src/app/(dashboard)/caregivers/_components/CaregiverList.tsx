@@ -2,12 +2,12 @@
 
 import * as React from 'react'
 import Alert from '@mui/material/Alert'
+import Badge from '@mui/material/Badge'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import FormControl from '@mui/material/FormControl'
-import IconButton from '@mui/material/IconButton'
 import InputLabel from '@mui/material/InputLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
@@ -138,6 +138,7 @@ export default function CaregiverList({
   }, [isLoading, reload])
 
   const handleCreateClick = () => router.push('/caregivers/create')
+  const handleApproveCaregiversClick = () => router.push('/caregivers/approve')
 
   const handleRowView = React.useCallback(
     (caregiver: CaregiverListItem) => () => {
@@ -259,20 +260,50 @@ export default function CaregiverList({
   return (
     <PageContainer
       title="Caregivers"
+      actionsBreakpoint="lg"
        breadcrumbs={[
         { title: 'Home', path: '/dashboard' },
         { title: 'Caregivers' },
       ]}
       actions={
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-            <Tooltip title="Reload data" placement="right" enterDelay={1000}>
-            <div>
-              <IconButton size="small" aria-label="refresh" onClick={handleRefresh} disabled={isLoading}>
-                {isLoading ? <CircularProgress size={18} color="inherit" /> : <RefreshIcon />}
-              </IconButton>
-            </div>
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          spacing={1}
+          sx={{
+            alignItems: { xs: 'stretch', md: 'center' },
+            flexWrap: { xs: 'nowrap', md: 'wrap' },
+            justifyContent: 'flex-start',
+            rowGap: 1,
+            width: { xs: '100%', md: 'auto' },
+          }}
+        >
+          <Tooltip title="Reload data" placement="right" enterDelay={1000}>
+            <span>
+              <Button
+                variant="outlined"
+                startIcon={isLoading ? <CircularProgress size={18} color="inherit" /> : <RefreshIcon />}
+                onClick={handleRefresh}
+                disabled={isLoading}
+                aria-label="Reload"
+                sx={{
+                  minWidth: { md: 40 },
+                  width: { xs: '100%', md: 'auto' },
+                  '& .MuiButton-startIcon': {
+                    mr: { md: 0 },
+                  },
+                }}
+              >
+                <Box component="span" sx={{ display: { xs: 'inline', md: 'none' } }}>
+                  Reload
+                </Box>
+              </Button>
+            </span>
           </Tooltip>
-          <FormControl size="small" sx={{ minWidth: 150 }} disabled={isLoading}>
+          <FormControl
+            size="small"
+            sx={{ minWidth: 150, width: { xs: '100%', md: 'auto' } }}
+            disabled={isLoading}
+          >
             <InputLabel id="classification-filter-label">Classification</InputLabel>
             <Select
               labelId="classification-filter-label"
@@ -296,7 +327,11 @@ export default function CaregiverList({
               ))}
             </Select>
           </FormControl>
-          <FormControl size="small" sx={{ minWidth: 150 }} disabled={isLoading}>
+          <FormControl
+            size="small"
+            sx={{ minWidth: 150, width: { xs: '100%', md: 'auto' } }}
+            disabled={isLoading}
+          >
             <InputLabel id="status-filter-label">Status</InputLabel>
             <Select
               labelId="status-filter-label"
@@ -320,9 +355,46 @@ export default function CaregiverList({
               ))}
             </Select>
           </FormControl>
-          <Button variant="contained" onClick={handleCreateClick} startIcon={<AddIcon />}>
-            Create caregiver
-          </Button>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={1}
+            sx={{ alignItems: { xs: 'stretch', md: 'center' }, width: { xs: '100%', md: 'auto' } }}
+          >
+            <Badge
+              color="success"
+              overlap="rectangular"
+              variant="dot"
+              anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+              sx={{
+                display: { xs: 'block', md: 'inline-flex' },
+                width: { xs: '100%', md: 'auto' },
+                '& .MuiBadge-badge': {
+                  border: 2,
+                  borderColor: 'background.paper',
+                  borderStyle: 'solid',
+                  borderRadius: '50%',
+                  height: 14,
+                  minWidth: 14,
+                },
+              }}
+            >
+              <Button
+                variant="outlined"
+                onClick={handleApproveCaregiversClick}
+                sx={{ backgroundColor: 'background.paper', whiteSpace: 'nowrap', width: { xs: '100%', md: 'auto' } }}
+              >
+                Approve caregivers
+              </Button>
+            </Badge>
+            <Button
+              variant="contained"
+              onClick={handleCreateClick}
+              startIcon={<AddIcon />}
+              sx={{ whiteSpace: 'nowrap', width: { xs: '100%', md: 'auto' } }}
+            >
+              Create caregiver
+            </Button>
+          </Stack>
         </Stack>
       }
     >

@@ -1,11 +1,14 @@
 import DashboardFrame from './DashboardFrame';
 import SessionWatcher from '@/components/SessionWatcher';
+import { getActiveMembership } from '@/lib/auth/server';
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+export default async function Layout({ children }: { children: React.ReactNode }) {
+  const membership = await getActiveMembership();
+
   return (
     <>
       <SessionWatcher />
-      <DashboardFrame>{children}</DashboardFrame>
+      <DashboardFrame roles={membership?.roles ?? []}>{children}</DashboardFrame>
     </>
   );
 }

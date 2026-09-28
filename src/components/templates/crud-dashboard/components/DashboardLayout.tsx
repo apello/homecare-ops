@@ -9,15 +9,18 @@ import DashboardHeader from './DashboardHeader';
 import DashboardSidebar from './DashboardSidebar';
 import SitemarkIcon from './SitemarkIcon';
 import type { NavigationItem } from '../navigation';
+import type { OrgRole } from '@/types';
 
 export interface DashboardLayoutProps {
   navigation: NavigationItem[];
+  roles: OrgRole[];
   title?: string;
   children: React.ReactNode;
 }
 
 export default function DashboardLayout({
   navigation,
+  roles,
   title = '',
   children,
 }: DashboardLayoutProps) {
@@ -58,6 +61,7 @@ export default function DashboardLayout({
       <DashboardHeader
         logo={<SitemarkIcon />}
         title={title}
+        roles={roles}
         menuOpen={isNavigationExpanded}
         onToggleMenu={handleToggleHeaderMenu}
       />

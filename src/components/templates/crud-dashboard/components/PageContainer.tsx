@@ -1,6 +1,6 @@
 'use client';
 import * as React from 'react';
-import { styled } from '@mui/material/styles';
+import { styled, type Breakpoint } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import Breadcrumbs, { breadcrumbsClasses } from '@mui/material/Breadcrumbs';
 import Container, { ContainerProps } from '@mui/material/Container';
@@ -45,10 +45,11 @@ export interface PageContainerProps extends ContainerProps {
   title?: string;
   breadcrumbs?: Breadcrumb[];
   actions?: React.ReactNode;
+  actionsBreakpoint?: Breakpoint;
 }
 
 export default function PageContainer(props: PageContainerProps) {
-  const { children, breadcrumbs, title, actions = null } = props;
+  const { children, breadcrumbs, title, actions = null, actionsBreakpoint = 'md' } = props;
 
   return (
     <Container sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -81,9 +82,23 @@ export default function PageContainer(props: PageContainerProps) {
                 })
               : null}
           </PageHeaderBreadcrumbs>
-          <PageContentHeader>
+          <PageContentHeader
+            sx={(theme) => ({
+              [theme.breakpoints.down(actionsBreakpoint)]: {
+                flexDirection: 'column',
+              },
+            })}
+          >
             {title ? <Typography variant="h4">{title}</Typography> : null}
-            <PageHeaderToolbar>{actions}</PageHeaderToolbar>
+            <PageHeaderToolbar
+              sx={(theme) => ({
+                [theme.breakpoints.down(actionsBreakpoint)]: {
+                  marginLeft: 0,
+                },
+              })}
+            >
+              {actions}
+            </PageHeaderToolbar>
           </PageContentHeader>
         </Stack>
         <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>

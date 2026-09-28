@@ -208,27 +208,30 @@ export default function CredentialList({ caregiver, orgId, credentials: initialC
       }
     >
       <Stack spacing={2} sx={{ width: '100%' }}>
-        <Box sx={{ minHeight: 100, width: '100%' }}>
-          {credentials.length === 0 ? (
-            <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
-              No credentials on file.
-            </Typography>
-          ) : (
-            <DataGrid
-              rows={credentials}
-              getRowId={(row) => row.id}
-              columns={columns}
-              disableRowSelectionOnClick
-              hideFooter
-              sx={{
-                opacity: isBusy ? 0.6 : 1,
-                [`& .${gridClasses.columnHeader}, & .${gridClasses.cell}`]: { outline: 'transparent' },
-                [`& .${gridClasses.columnHeader}:focus-within, & .${gridClasses.cell}:focus-within`]: {
-                  outline: 'none',
-                },
-              }}
-            />
-          )}
+        <Box sx={{ width: '100%', height: 320 }}>
+          <DataGrid
+            rows={credentials}
+            getRowId={(row) => row.id}
+            columns={columns}
+            disableRowSelectionOnClick
+            hideFooter
+            slots={{
+              noRowsOverlay: () => (
+                <Stack sx={{ height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    No credentials on file.
+                  </Typography>
+                </Stack>
+              ),
+            }}
+            sx={{
+              opacity: isBusy ? 0.6 : 1,
+              [`& .${gridClasses.columnHeader}, & .${gridClasses.cell}`]: { outline: 'transparent' },
+              [`& .${gridClasses.columnHeader}:focus-within, & .${gridClasses.cell}:focus-within`]: {
+                outline: 'none',
+              },
+            }}
+          />
         </Box>
         <Box>
           <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={handleBackClick}>

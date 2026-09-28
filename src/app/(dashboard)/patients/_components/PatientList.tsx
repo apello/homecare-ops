@@ -2,10 +2,10 @@
 
 import * as React from 'react'
 import Alert from '@mui/material/Alert'
+import Badge from '@mui/material/Badge'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
-import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -85,6 +85,7 @@ export default function PatientList({ orgId, initialPage, initialPaginationModel
   }, [isLoading, reload])
 
   const handleCreateClick = () => router.push('/patients/create')
+  const handleApprovePatientsClick = () => router.push('/patients/approve')
 
   const handleRowView = React.useCallback(
     (patient: PatientListItem) => () => {
@@ -218,17 +219,75 @@ export default function PatientList({ orgId, initialPage, initialPaginationModel
         {title: 'Patients' },
       ]}
       actions={
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          spacing={1}
+          sx={{
+            alignItems: { xs: 'stretch', md: 'center' },
+            justifyContent: 'flex-start',
+            width: { xs: '100%', md: 'auto' },
+          }}
+        >
           <Tooltip title="Reload data" placement="right" enterDelay={1000}>
-            <div>
-              <IconButton size="small" aria-label="refresh" onClick={handleRefresh} disabled={isLoading}>
-                {isLoading ? <CircularProgress size={18} color="inherit" /> : <RefreshIcon />}
-              </IconButton>
-            </div>
+            <span>
+              <Button
+                variant="outlined"
+                aria-label="Reload"
+                startIcon={isLoading ? <CircularProgress size={18} color="inherit" /> : <RefreshIcon />}
+                onClick={handleRefresh}
+                disabled={isLoading}
+                sx={{
+                  minWidth: { md: 40 },
+                  width: { xs: '100%', md: 'auto' },
+                  '& .MuiButton-startIcon': { mr: { md: 0 } },
+                }}
+              >
+                <Box component="span" sx={{ display: { xs: 'inline', md: 'none' } }}>
+                  Reload
+                </Box>
+              </Button>
+            </span>
           </Tooltip>
-          <Button variant="contained" onClick={handleCreateClick} startIcon={<AddIcon />}>
-            Create patient
-          </Button>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={1}
+            sx={{ alignItems: { xs: 'stretch', md: 'center' }, width: { xs: '100%', md: 'auto' } }}
+          >
+            <Badge
+              color="success"
+              overlap="rectangular"
+              variant="dot"
+              anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+              sx={{
+                display: { xs: 'block', md: 'inline-flex' },
+                width: { xs: '100%', md: 'auto' },
+                '& .MuiBadge-badge': {
+                  border: 2,
+                  borderColor: 'background.paper',
+                  borderStyle: 'solid',
+                  borderRadius: '50%',
+                  height: 14,
+                  minWidth: 14,
+                },
+              }}
+            >
+              <Button
+                variant="outlined"
+                onClick={handleApprovePatientsClick}
+                sx={{ backgroundColor: 'background.paper', whiteSpace: 'nowrap', width: { xs: '100%', md: 'auto' } }}
+              >
+                Approve patients
+              </Button>
+            </Badge>
+            <Button
+              variant="contained"
+              onClick={handleCreateClick}
+              startIcon={<AddIcon />}
+              sx={{ whiteSpace: 'nowrap', width: { xs: '100%', md: 'auto' } }}
+            >
+              Create patient
+            </Button>
+          </Stack>
         </Stack>
       }
     >

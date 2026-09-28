@@ -12,6 +12,7 @@ import DashboardLayout from '@/components/templates/crud-dashboard/components/Da
 import NotificationsProvider from '@/components/templates/crud-dashboard/hooks/useNotifications/NotificationsProvider';
 import DialogsProvider from '@/components/templates/crud-dashboard/hooks/useDialogs/DialogsProvider';
 import type { NavigationItem } from '@/components/templates/crud-dashboard/navigation';
+import type { OrgRole } from '@/types';
 
 import AppTheme from '@/components/templates/shared-theme/AppTheme';
 import {
@@ -71,15 +72,17 @@ const themeComponents = {
 
 export default function DashboardFrame({
   children,
+  roles,
 }: {
   children: React.ReactNode;
+  roles: OrgRole[];
 }) {
   return (
     <AppTheme themeComponents={themeComponents}>
       <CssBaseline enableColorScheme />
       <NotificationsProvider>
         <DialogsProvider>
-          <DashboardLayout navigation={navigation}>
+          <DashboardLayout navigation={navigation} roles={roles}>
             {children}
           </DashboardLayout>
         </DialogsProvider>

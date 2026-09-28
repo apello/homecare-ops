@@ -155,27 +155,30 @@ export default function SkillList({ caregiver, orgId, skills: initialSkills }: S
       }
     >
       <Stack spacing={2} sx={{ width: '100%' }}>
-        <Box sx={{ minHeight: 100, width: '100%' }}>
-          {skills.length === 0 ? (
-            <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
-              No skills recorded yet.
-            </Typography>
-          ) : (
-            <DataGrid
-              rows={skills}
-              getRowId={(row) => row.id}
-              columns={columns}
-              disableRowSelectionOnClick
-              hideFooter
-              sx={{
-                opacity: isDeleting ? 0.6 : 1,
-                [`& .${gridClasses.columnHeader}, & .${gridClasses.cell}`]: { outline: 'transparent' },
-                [`& .${gridClasses.columnHeader}:focus-within, & .${gridClasses.cell}:focus-within`]: {
-                  outline: 'none',
-                },
-              }}
-            />
-          )}
+        <Box sx={{ width: '100%', height: 320 }}>
+          <DataGrid
+            rows={skills}
+            getRowId={(row) => row.id}
+            columns={columns}
+            disableRowSelectionOnClick
+            hideFooter
+            slots={{
+              noRowsOverlay: () => (
+                <Stack sx={{ height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    No skills recorded yet.
+                  </Typography>
+                </Stack>
+              ),
+            }}
+            sx={{
+              opacity: isDeleting ? 0.6 : 1,
+              [`& .${gridClasses.columnHeader}, & .${gridClasses.cell}`]: { outline: 'transparent' },
+              [`& .${gridClasses.columnHeader}:focus-within, & .${gridClasses.cell}:focus-within`]: {
+                outline: 'none',
+              },
+            }}
+          />
         </Box>
         <Box>
           <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={handleBackClick}>
