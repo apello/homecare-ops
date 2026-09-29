@@ -150,6 +150,7 @@ export default function AvailabilityList({
   )
 
   return (
+    // TODO: Add interactive calendar module that shows availabilities
     <PageContainer
       title="Availability"
        breadcrumbs={[
